@@ -72,13 +72,13 @@ function AnimationTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<st
 // ── Screenshot capturer ────────────────────────────────────────────────────
 
 function ScreenshotCapturer({ onCapture }: { onCapture: (dataUrl: string) => void }) {
-  const { gl } = useThree();
+  const { gl, scene, camera } = useThree();
 
   useFrame(() => {
     const { pendingScreenshot, setPendingScreenshot } = useSceneStore.getState();
     if (pendingScreenshot === null) return;
     setPendingScreenshot(null);
-    gl.render(gl.xr.getCamera() as unknown as THREE.PerspectiveCamera, gl.xr.getCamera() as unknown as THREE.Camera);
+    gl.render(scene, camera);
     const dataUrl = gl.domElement.toDataURL('image/png');
     onCapture(dataUrl);
   });

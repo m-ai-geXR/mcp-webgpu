@@ -108,7 +108,8 @@ export type WSMessageType =
   | 'pong'
   | 'switch-provider'
   | 'provider-config'
-  | 'update-system-prompt';
+  | 'update-system-prompt'
+  | 'clear-scene';
 
 export interface WSMessage {
   type: WSMessageType;

@@ -2,6 +2,7 @@ import { PendingMessage } from '../types.js';
 import { MessageQueue } from './MessageQueue.js';
 import type { WSServer } from '../ws/WSServer.js';
 import type { SceneStateManager } from '../state/SceneStateManager.js';
+import type { Framework } from '../types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export type Provider =
@@ -44,9 +45,9 @@ export interface ChatConfig {
   provider?: Provider;
 }
 
-const DEFAULT_SYSTEM_PROMPT = `You are an AI assistant embedded inside a live 3D environment (Three.js / WebGL).
-You can create, modify, and delete 3D objects, lights, camera, and environment in real time.
+// ─── Shared command reference (appended to every framework prompt) ───────────
 
+const COMMAND_REFERENCE = `
 When the user asks you to change the scene, respond with a JSON block containing an array of commands.
 Wrap the JSON in a \`\`\`json fenced code block so it can be parsed.
 
@@ -77,6 +78,118 @@ I'll create a red cube and a blue sphere for you.
 If the user just asks a question (not a scene change), reply normally without commands.
 Keep explanations concise.`;
 
+// ─── Per-framework system prompts (adapted from maigeXR iOS) ────────────────
+
+const FRAMEWORK_SYSTEM_PROMPTS: Record<Framework, string> = {
+  threejs: `You are an expert Three.js assistant embedded inside a live 3D environment.
+You are a **creative Three.js mentor** who helps users bring 3D ideas to life.
+Your role is not just technical but also **artistic**: you suggest imaginative variations,
+playful enhancements, and visually interesting touches.
+
+You can create, modify, and delete 3D objects, lights, camera, and environment in real time
+by responding with JSON scene commands.
+
+## Three.js Tips
+- Supported geometry types: box, sphere, cylinder, cone, torus, plane, capsule.
+- Materials support PBR properties: color, metalness, roughness, emissive, emissiveIntensity, opacity.
+- Use MeshStandardMaterial properties for realistic PBR rendering.
+- Animations are handled via the animateObject command with position/rotation/scale tweening.
+- Dark backgrounds (e.g. "#0a0a1a") make emissive materials and bloom effects pop dramatically.
+- Combine ambient + directional + point lights for depth and realism.
+- Use metalness (0-1) and roughness (0-1) for realistic surface appearance.
+- Y axis is up. Position and scale use world units (metres by convention).
+- Rotation is in degrees {x, y, z}.
+
+## Creative Guidelines
+- Even for simple requests like "create a cube", enrich the scene with interesting materials or lighting.
+- Suggest imaginative variations and playful enhancements.
+- Use multiple colored lights for dramatic effects.
+- Consider fog and environment settings for atmosphere.
+- Add subtle animations to bring scenes to life.
+${COMMAND_REFERENCE}`,
+
+  aframe: `You are an expert A-Frame assistant embedded inside a live 3D/VR environment.
+You are a **creative A-Frame mentor** who helps users bring immersive 3D/VR ideas to life.
+Your role is not just technical but also **artistic**: you suggest imaginative variations,
+interactive VR elements, and immersive experiences.
+
+You can create, modify, and delete 3D objects, lights, camera, and environment in real time
+by responding with JSON scene commands.
+
+## A-Frame Tips
+- Position/rotation/scale are sent as {x,y,z} from the server; the adapter converts
+  them to A-Frame's "x y z" string format automatically.
+- Supported geometry types: box, sphere, cylinder, cone, torus, plane, capsule.
+- Materials support color, metalness, roughness, opacity.
+- A-Frame uses an entity-component architecture under the hood.
+- Think in 3D space — objects should surround the user for VR.
+- Y axis is up. Rotation is in degrees.
+
+## VR/AR Design Guidelines
+- Always think in 3D space — objects should surround the user at comfortable distances.
+- Place important objects at eye level (~1.6m height) for VR comfort.
+- Use animations to bring the scene to life and guide user attention.
+- Create environments that encourage exploration.
+- Use lighting to set mood and atmosphere.
+- Consider spatial arrangement for immersive experiences.
+${COMMAND_REFERENCE}`,
+
+  babylonjs: `You are an expert Babylon.js assistant embedded inside a live 3D environment.
+You are a **creative Babylon.js mentor** who helps users bring 3D ideas to life.
+Your role is not just technical but also **artistic**: you suggest imaginative variations,
+playful enhancements, and visually interesting touches.
+
+You can create, modify, and delete 3D objects, lights, camera, and environment in real time
+by responding with JSON scene commands.
+
+## Babylon.js Tips
+- Rotation is stored in degrees server-side; the BabylonAdapter converts to radians.
+- Supported geometry types: box, sphere, cylinder, cone, torus, plane, capsule.
+- Materials support color, metalness, roughness, emissive, opacity.
+- Babylon.js MeshBuilder is used under the hood for geometry creation.
+- Use StandardMaterial properties (diffuseColor, emissiveColor, specularColor).
+- GlowLayer and emissive materials create spectacular glow effects.
+- Y axis is up. Position and scale use world units.
+
+## Creative Guidelines
+- Even for simple requests like "create a cube", enrich the scene with creative materials.
+- Give objects unique materials — vary color, metalness, roughness.
+- Add environmental flavor: fog, interesting background colors, varied lighting.
+- Use multiple light types (ambient, directional, point) for depth and atmosphere.
+- Suggest animations and interactive compositions.
+- Encourage exploration with clever spatial arrangements.
+${COMMAND_REFERENCE}`,
+
+  r3f: `You are an expert React Three Fiber assistant embedded inside a live 3D environment.
+You are a **creative React Three Fiber mentor** who helps users bring 3D ideas to life
+using declarative React patterns.
+Your role is not just technical but also **artistic**: you suggest imaginative variations,
+playful enhancements, and visually interesting touches.
+
+You can create, modify, and delete 3D objects, lights, camera, and environment in real time
+by responding with JSON scene commands.
+
+## React Three Fiber Tips
+- The R3F client manages scene state in a Zustand store.
+- Position/rotation/scale are sent as {x,y,z}; the R3FAdapter converts to tuples.
+- Supported geometry types: box, sphere, cylinder, cone, torus, plane, capsule.
+- Materials support PBR properties: color, metalness, roughness, opacity.
+- React Three Fiber uses declarative JSX components (mesh, boxGeometry, meshStandardMaterial).
+- drei helpers (OrbitControls, Environment, Text) enhance the experience.
+- Y axis is up. Rotation is in degrees.
+
+## Creative Guidelines
+- Use materials with realistic PBR properties (metalness, roughness).
+- Add smooth animations with the animateObject command.
+- Create interesting compositions with varied object types.
+- Use multiple colored lights for dramatic, artistic scenes.
+- Consider fog and environment settings for atmosphere.
+- Even simple requests deserve creative, visually appealing results.
+${COMMAND_REFERENCE}`,
+};
+
+const DEFAULT_SYSTEM_PROMPT = FRAMEWORK_SYSTEM_PROMPTS.threejs;
+
 /** Model lists per provider — shown in the client dropdown. */
 const PROVIDER_CATALOG: Record<Provider, { label: string; models: string[]; defaultModel: string }> = {
   openai:    { label: 'OpenAI',       models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'], defaultModel: 'gpt-4.1' },
@@ -97,7 +210,7 @@ export class ChatRelay {
   private processing = false;
   private activeProvider: Provider;
   private activeModel: string;
-  private systemPrompt: string = DEFAULT_SYSTEM_PROMPT;
+  private systemPrompts: Record<string, string> = { ...FRAMEWORK_SYSTEM_PROMPTS };
   private stateManager!: SceneStateManager;
 
   constructor(queue: MessageQueue, wsServer: WSServer, config: ChatConfig) {
@@ -169,15 +282,16 @@ export class ChatRelay {
     console.error(`[ChatRelay] Switched to ${provider} / ${this.activeModel}`);
   }
 
-  /** Get the current system prompt. */
-  getSystemPrompt(): string {
-    return this.systemPrompt;
+  /** Get the current system prompt for a framework (defaults to threejs). */
+  getSystemPrompt(framework?: Framework): string {
+    return this.systemPrompts[framework ?? 'threejs'] ?? DEFAULT_SYSTEM_PROMPT;
   }
 
-  /** Update the system prompt at runtime (from the client UI). */
-  setSystemPrompt(prompt: string): void {
-    this.systemPrompt = prompt;
-    console.error(`[ChatRelay] System prompt updated (${prompt.length} chars)`);
+  /** Update the system prompt at runtime for a specific framework. */
+  setSystemPrompt(prompt: string, framework?: Framework): void {
+    const fw = framework ?? 'threejs';
+    this.systemPrompts[fw] = prompt;
+    console.error(`[ChatRelay] System prompt updated for ${fw} (${prompt.length} chars)`);
   }
 
   /** Return the list of providers that have an API key (or are keyless like ollama). */
@@ -245,7 +359,7 @@ export class ChatRelay {
 
     this.processing = true;
     try {
-      const rawReply = await this.callAI(msg.message);
+      const rawReply = await this.callAI(msg.message, msg.framework);
       this.queue.shift();
 
       // Parse and execute any scene commands from the AI response
@@ -272,42 +386,42 @@ export class ChatRelay {
     }
   }
 
-  private async callAI(userMessage: string): Promise<string> {
+  private async callAI(userMessage: string, framework?: Framework): Promise<string> {
     switch (this.activeProvider) {
-      case 'openai':    return this.callOpenAI(userMessage);
-      case 'anthropic': return this.callAnthropic(userMessage);
-      case 'google':    return this.callGoogle(userMessage);
-      case 'mistral':   return this.callOpenAICompat(userMessage, this.config.mistralKey!, 'https://api.mistral.ai/v1', this.activeModel);
-      case 'groq':      return this.callOpenAICompat(userMessage, this.config.groqKey!, 'https://api.groq.com/openai/v1', this.activeModel);
-      case 'xai':       return this.callOpenAICompat(userMessage, this.config.xaiKey!, 'https://api.x.ai/v1', this.activeModel);
-      case 'cohere':    return this.callOpenAICompat(userMessage, this.config.cohereKey!, 'https://api.cohere.com/compatibility/v1', this.activeModel);
-      case 'together':  return this.callOpenAICompat(userMessage, this.config.togetherKey!, 'https://api.together.xyz/v1', this.activeModel);
-      case 'ollama':    return this.callOllama(userMessage);
+      case 'openai':    return this.callOpenAI(userMessage, framework);
+      case 'anthropic': return this.callAnthropic(userMessage, framework);
+      case 'google':    return this.callGoogle(userMessage, framework);
+      case 'mistral':   return this.callOpenAICompat(userMessage, this.config.mistralKey!, 'https://api.mistral.ai/v1', this.activeModel, framework);
+      case 'groq':      return this.callOpenAICompat(userMessage, this.config.groqKey!, 'https://api.groq.com/openai/v1', this.activeModel, framework);
+      case 'xai':       return this.callOpenAICompat(userMessage, this.config.xaiKey!, 'https://api.x.ai/v1', this.activeModel, framework);
+      case 'cohere':    return this.callOpenAICompat(userMessage, this.config.cohereKey!, 'https://api.cohere.com/compatibility/v1', this.activeModel, framework);
+      case 'together':  return this.callOpenAICompat(userMessage, this.config.togetherKey!, 'https://api.together.xyz/v1', this.activeModel, framework);
+      case 'ollama':    return this.callOllama(userMessage, framework);
       default:          throw new Error(`No AI provider configured for "${this.activeProvider}"`);
     }
   }
 
-  private async callOpenAI(userMessage: string): Promise<string> {
+  private async callOpenAI(userMessage: string, framework?: Framework): Promise<string> {
     const { default: OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey: this.config.openaiKey });
     const resp = await client.chat.completions.create({
       model: this.activeModel,
       messages: [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt(framework) },
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 2048,
+      max_tokens: 8192,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
   }
 
-  private async callAnthropic(userMessage: string): Promise<string> {
+  private async callAnthropic(userMessage: string, framework?: Framework): Promise<string> {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: this.config.anthropicKey });
     const msg = await client.messages.create({
       model: this.activeModel,
-      max_tokens: 2048,
-      system: this.systemPrompt,
+      max_tokens: 8192,
+      system: this.getSystemPrompt(framework),
       messages: [{ role: 'user', content: userMessage }],
     });
     const block = msg.content[0];
@@ -317,30 +431,36 @@ export class ChatRelay {
   }
 
   /** OpenAI-compatible endpoint — works for Mistral, Groq, xAI, Cohere, Together. */
-  private async callOpenAICompat(userMessage: string, apiKey: string, baseURL: string, model: string): Promise<string> {
+  private async callOpenAICompat(userMessage: string, apiKey: string, baseURL: string, model: string, framework?: Framework): Promise<string> {
     const { default: OpenAI } = await import('openai');
     const client = new OpenAI({ apiKey, baseURL });
     const resp = await client.chat.completions.create({
       model,
       messages: [
-        { role: 'system', content: this.systemPrompt },
+        { role: 'system', content: this.getSystemPrompt(framework) },
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 2048,
+      max_tokens: 8192,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
   }
 
   /** Google Gemini via the REST-based generateContent API (no extra SDK needed). */
-  private async callGoogle(userMessage: string): Promise<string> {
+  private async callGoogle(userMessage: string, framework?: Framework): Promise<string> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.activeModel}:generateContent?key=${this.config.googleKey}`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: this.systemPrompt }] },
+        system_instruction: { parts: [{ text: this.getSystemPrompt(framework) }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: 2048 },
+        generationConfig: { maxOutputTokens: 8192 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
       }),
     });
     if (!resp.ok) {
@@ -352,7 +472,7 @@ export class ChatRelay {
   }
 
   /** Ollama local inference via its REST API. */
-  private async callOllama(userMessage: string): Promise<string> {
+  private async callOllama(userMessage: string, framework?: Framework): Promise<string> {
     const base = this.config.ollamaBaseUrl ?? 'http://localhost:11434';
     const resp = await fetch(`${base}/api/chat`, {
       method: 'POST',
@@ -360,7 +480,7 @@ export class ChatRelay {
       body: JSON.stringify({
         model: this.activeModel,
         messages: [
-          { role: 'system', content: this.systemPrompt },
+          { role: 'system', content: this.getSystemPrompt(framework) },
           { role: 'user', content: userMessage },
         ],
         stream: false,

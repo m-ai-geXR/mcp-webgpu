@@ -100,6 +100,14 @@ export class WSClient {
     this.send({ type: 'switch-provider', provider, model });
   }
 
+  sendSystemPrompt(prompt: string): void {
+    this.send({ type: 'update-system-prompt', prompt });
+  }
+
+  sendClearScene(): void {
+    this.send({ type: 'clear-scene' });
+  }
+
   private send(data: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));

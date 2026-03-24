@@ -16,7 +16,23 @@ export function dispatch(
   const action = cmd['action'] as string | undefined;
   if (!action) return;
 
+  try {
+    _dispatch(cmd, action, scene, sendScreenshot);
+  } catch (err) {
+    console.error(`[AFrameClient] Error executing action '${action}':`, err);
+  }
+}
+
+function _dispatch(
+  cmd: Record<string, unknown>,
+  action: string,
+  scene: AFrameSceneManager,
+  sendScreenshot: (requestId: string, dataUrl: string) => void,
+): void {
   switch (action) {
+    case 'clearScene':
+      scene.loadScene({ objects: {}, lights: {} } as SceneState);
+      break;
     case 'createObject': {
       const createDef = { ...cmd };
       if (createDef['objectType']) createDef['type'] = createDef['objectType'];

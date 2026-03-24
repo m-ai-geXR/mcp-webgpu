@@ -18,14 +18,10 @@ export class R3FAdapter implements IFrameworkAdapter {
   };
 
   translateCommand(command: GenericCommand): GenericCommand {
-    const cmd = { ...command };
-    for (const key of ['position', 'rotation', 'scale']) {
-      const v = cmd[key] as Vec3 | undefined;
-      if (v && typeof v === 'object' && 'x' in v) {
-        cmd[key] = this.toArr(v) as unknown as Vec3;
-      }
-    }
-    return cmd;
+    // Pass through — the R3F client reads {x,y,z} objects and converts
+    // to arrays in JSX props itself.  Converting here would break
+    // client-side .x/.y/.z property access.
+    return command;
   }
 
   parseState(raw: unknown): Partial<SceneState> {

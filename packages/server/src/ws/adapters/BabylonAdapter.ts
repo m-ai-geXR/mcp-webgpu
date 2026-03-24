@@ -14,17 +14,9 @@ export class BabylonAdapter implements IFrameworkAdapter {
   private toDeg = (rad: number) => (rad * 180) / Math.PI;
 
   translateCommand(command: GenericCommand): GenericCommand {
-    const cmd = { ...command };
-    // Convert canonical degrees → Babylon radians for rotation
-    if (cmd['rotation'] && typeof cmd['rotation'] === 'object') {
-      const r = cmd['rotation'] as { x: number; y: number; z: number };
-      cmd['rotation'] = {
-        x: this.toRad(r.x),
-        y: this.toRad(r.y),
-        z: this.toRad(r.z),
-      };
-    }
-    return cmd;
+    // Pass through — the client handles degree→radian conversion itself,
+    // consistent with the ThreeJS/R3F pattern.
+    return command;
   }
 
   parseState(raw: unknown): Partial<SceneState> {

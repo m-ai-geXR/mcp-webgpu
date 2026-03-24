@@ -100,6 +100,106 @@
       background: #1a1a2e;
       color: #d0d8ff;
     }
+
+    /* ── System prompt section ────────────────────── */
+    #system-prompt-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid rgba(100,120,200,0.15);
+      font-size: 11px;
+      color: rgba(100,150,255,.8);
+      font-weight: 600;
+    }
+    #system-prompt-toggle:hover { color: rgba(140,180,255,1); }
+
+    #system-prompt-section {
+      padding: 6px 12px 10px;
+      border-bottom: 1px solid rgba(100,120,200,0.15);
+      display: none;
+    }
+
+    #system-prompt {
+      width: 100%;
+      min-height: 80px;
+      max-height: 200px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(100,120,200,0.3);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace, system-ui;
+      color: #c8d4ff;
+      outline: none;
+      resize: vertical;
+      line-height: 1.4;
+    }
+    #system-prompt:focus { border-color: rgba(100,150,255,.6); }
+
+    .prompt-hint {
+      font-size: 10px;
+      color: #4b5563;
+      margin-top: 4px;
+    }
+
+    /* ── Clear / action buttons ─────────────────── */
+    #chat-action-row {
+      display: flex;
+      gap: 6px;
+      padding: 4px 12px;
+      border-bottom: 1px solid rgba(100,120,200,0.15);
+      flex-shrink: 0;
+    }
+    #chat-action-row button {
+      background: rgba(220,50,50,0.25);
+      border: 1px solid rgba(220,80,80,0.4);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 11px;
+      color: #ff9090;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #chat-action-row button:hover { background: rgba(220,50,50,0.45); }
+
+    /* ── Debug panel ───────────────────────────── */
+    #debug-panel {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 360px;
+      background: rgba(8,8,20,0.95);
+      border-right: 1px solid rgba(100,120,200,0.3);
+      z-index: 200;
+      overflow-y: auto;
+      padding: 14px;
+      font-size: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace, system-ui;
+      color: #c8d4ff;
+      display: none;
+      backdrop-filter: blur(12px);
+      scrollbar-width: thin;
+    }
+    #debug-panel.visible { display: block; }
+    #debug-panel h3 { color: rgba(100,150,255,.8); margin: 12px 0 6px; font-size: 13px; }
+    #debug-panel h3:first-child { margin-top: 0; }
+    #debug-panel pre {
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+      padding: 8px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    #debug-panel .debug-hint {
+      color: #506080;
+      font-size: 10px;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -115,12 +215,22 @@
       <select id="provider-select"></select>
       <select id="model-select"></select>
     </div>
+    <div id="system-prompt-toggle">⚙ System Prompt ▾</div>
+    <div id="system-prompt-section">
+      <textarea id="system-prompt" spellcheck="false" placeholder="System prompt…"></textarea>
+      <div class="prompt-hint">Ctrl+Enter or click away to save</div>
+    </div>
+    <div id="chat-action-row">
+      <button id="clear-scene-btn">🗑 Clear Scene</button>
+    </div>
     <div id="chat-messages"></div>
     <div id="chat-input-row">
       <input id="chat-input" placeholder="Ask the AI… (Enter to send)" />
       <button id="chat-send">Send</button>
     </div>
   </div>
+
+  <div id="debug-panel"></div>
 
   <script type="module" src="/src/main.tsx"></script>
 </body>

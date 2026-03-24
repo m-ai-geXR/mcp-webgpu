@@ -2,66 +2,85 @@
  * Command dispatcher — routes MCP action types to BabylonSceneManager methods.
  */
 import { BabylonSceneManager } from '../scene.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, Vec3 } from '../types.js';
 
 export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown>): void {
   const action = cmd.action as string;
-  const payload = (cmd.payload ?? {}) as Record<string, unknown>;
+  if (!action) return;
 
   switch (action) {
     // ── Objects ──────────────────────────────────────────────────────────────
-    case 'create-object':
-      scene.createObject(payload as Parameters<BabylonSceneManager['createObject']>[0]);
+    case 'createObject': {
+      const createDef = { ...cmd };
+      if (createDef['objectType']) createDef['type'] = createDef['objectType'];
+      scene.createObject(createDef as unknown as SceneObject);
       break;
-    case 'update-object':
-      scene.updateObject(payload as Parameters<BabylonSceneManager['updateObject']>[0]);
+    }
+    case 'updateObject': {
+      const updateDef = { ...cmd };
+      if (updateDef['objectType']) updateDef['type'] = updateDef['objectType'];
+      scene.updateObject(updateDef as unknown as Partial<SceneObject> & { id: string });
       break;
-    case 'delete-object':
-      scene.deleteObject(payload.id as string);
+    }
+    case 'deleteObject':
+      scene.deleteObject(cmd['id'] as string);
       break;
 
     // ── Lights ───────────────────────────────────────────────────────────────
-    case 'create-light':
-      scene.createLight(payload as Parameters<BabylonSceneManager['createLight']>[0]);
+    case 'createLight':
+      scene.createLight(cmd as unknown as SceneLight);
       break;
-    case 'update-light':
-      scene.updateLight(payload as Parameters<BabylonSceneManager['updateLight']>[0]);
+    case 'updateLight':
+      scene.updateLight(cmd as unknown as Partial<SceneLight> & { id: string });
       break;
-    case 'delete-light':
-      scene.deleteLight(payload.id as string);
+    case 'deleteLight':
+      scene.deleteLight(cmd['id'] as string);
       break;
 
     // ── Camera ───────────────────────────────────────────────────────────────
-    case 'set-camera':
-      scene.setCamera(payload as Parameters<BabylonSceneManager['setCamera']>[0]);
+    case 'setCamera':
+      scene.setCamera(cmd as unknown as Partial<SceneCamera>);
       break;
-    case 'fly-to-object':
-      scene.flyToObject(payload.id as string, payload.distance as number | undefined);
+    case 'flyToObject': {
+      const { id, distance } = cmd as { id: string; distance?: number };
+      scene.flyToObject(id, distance);
       break;
+    }
 
     // ── Animations ───────────────────────────────────────────────────────────
-    case 'animate-object':
-      scene.animateObject(
-        payload.id       as string,
-        payload.property as 'position' | 'rotation' | 'scale',
-        payload.to       as { x: number; y: number; z: number },
-        payload.duration as number,
-        payload.easing   as string,
-        payload.loop     as boolean,
-      );
+    case 'animateObject': {
+      const { id, property, to, duration, easing, loop } = cmd as {
+        id: string;
+        property: 'position' | 'rotation' | 'scale';
+        to: Vec3;
+        duration?: number;
+        easing?: string;
+        loop?: boolean;
+      };
+      scene.animateObject(id, property, to, duration ?? 1, easing ?? 'linear', loop ?? false);
       break;
-    case 'stop-animation':
-      scene.stopAnimation(payload.id as string);
+    }
+    case 'stopAnimation':
+      scene.stopAnimation(cmd['id'] as string);
       break;
 
     // ── Environment ──────────────────────────────────────────────────────────
-    case 'set-environment':
-      scene.setEnvironment(payload as Parameters<BabylonSceneManager['setEnvironment']>[0]);
+    case 'setEnvironment':
+      scene.setEnvironment(cmd as unknown as EnvironmentDef);
       break;
 
     // ── Full scene ───────────────────────────────────────────────────────────
-    case 'load-scene':
-      scene.loadScene(payload as Parameters<BabylonSceneManager['loadScene']>[0]);
+    case 'loadScene':
+      scene.loadScene((cmd['state'] ?? cmd) as SceneState);
       break;
+
+    // ── Screenshot ───────────────────────────────────────────────────────────
+    case 'takeScreenshot': {
+      const dataUrl = scene.takeScreenshot();
+      // screenshot is handled in main.ts, but accept here as fallback
+      console.log('[BabylonClient] takeScreenshot via dispatch');
+      break;
+    }
 
     default:
       console.warn('[BabylonClient] Unknown action:', action);

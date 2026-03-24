@@ -351,9 +351,8 @@ export class BabylonSceneManager {
 
     applyEasingFn(anim, easing);
 
-    const fromVec = property === 'rotation'
-      ? new Vector3(toRad(from.x), toRad(from.y), toRad(from.z))
-      : new Vector3(from.x, from.y, from.z);
+    // from is read from mesh.rotation (already radians) or mesh.position/scaling (no conversion needed)
+    const fromVec = new Vector3(from.x, from.y, from.z);
 
     const totalFrames = Math.round(duration * 60);
     anim.setKeys([
@@ -430,24 +429,16 @@ export class BabylonSceneManager {
   ): void {
     const color = hexToColor3(def.color ?? '#4488ff');
 
-    if (def.metalness !== undefined || def.roughness !== undefined) {
-      // Use PBR
-      const mat = new PBRMaterial(`mat_${mesh.name}`, this.scene);
-      mat.albedoColor   = color;
-      mat.metallic      = def.metalness ?? 0.1;
-      mat.roughness     = def.roughness ?? 0.7;
-      if (def.opacity !== undefined) { mat.alpha = def.opacity; }
-      if (def.wireframe) mat.wireframe = true;
-      if (def.textureUrl) mat.albedoTexture = new Texture(def.textureUrl, this.scene);
-      mesh.material = mat;
-    } else {
-      const mat = new StandardMaterial(`mat_${mesh.name}`, this.scene);
-      mat.diffuseColor = color;
-      if (def.emissive) mat.emissiveColor = hexToColor3(def.emissive);
-      if (def.opacity !== undefined) mat.alpha = def.opacity;
-      if (def.wireframe) mat.wireframe = true;
-      if (def.textureUrl) mat.diffuseTexture = new Texture(def.textureUrl, this.scene);
-      mesh.material = mat;
-    }
+    // Always use PBR to match Three.js MeshStandardMaterial defaults
+    const mat = new PBRMaterial(`mat_${mesh.name}`, this.scene);
+    mat.albedoColor = color;
+    mat.metallic    = def.metalness ?? 0.1;
+    mat.roughness   = def.roughness ?? 0.7;
+    if (def.emissive) mat.emissiveColor = hexToColor3(def.emissive);
+    if (def.emissiveIntensity !== undefined) mat.emissiveIntensity = def.emissiveIntensity;
+    if (def.opacity !== undefined) { mat.alpha = def.opacity; }
+    if (def.wireframe) mat.wireframe = true;
+    if (def.textureUrl) mat.albedoTexture = new Texture(def.textureUrl, this.scene);
+    mesh.material = mat;
   }
 }

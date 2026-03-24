@@ -1,6 +1,26 @@
 // Load .env FIRST — before any other imports that might read env vars.
 import { config } from 'dotenv';
-config({ path: process.env['DOTENV_PATH'] ?? '.env' });
+import { existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Walk up from the server package dir to find the workspace-root .env */
+function findEnv(): string {
+  const explicit = process.env['DOTENV_PATH'];
+  if (explicit) return explicit;
+
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 5; i++) {
+    const candidate = resolve(dir, '.env');
+    if (existsSync(candidate)) return candidate;
+    dir = dirname(dir);
+  }
+  return '.env'; // fallback
+}
+
+const envPath = findEnv();
+config({ path: envPath });
+console.error(`[env] Loaded ${envPath}`);
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';

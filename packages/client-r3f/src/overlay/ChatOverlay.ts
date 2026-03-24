@@ -17,20 +17,25 @@ export class ChatOverlay {
   private input:     HTMLInputElement;
   private expanded   = false;
   private onSwitch: (provider: string, model?: string) => void;
+  private onSystemPromptChange: (prompt: string) => void;
   private providerSelect: HTMLSelectElement;
   private modelSelect: HTMLSelectElement;
+  private systemPromptTextarea: HTMLTextAreaElement;
   private providers: ProviderInfo[] = [];
 
   constructor(
     private readonly onSend: (msg: string) => void,
     onSwitch: (provider: string, model?: string) => void = () => {},
+    onSystemPromptChange: (prompt: string) => void = () => {},
   ) {
     this.onSwitch = onSwitch;
+    this.onSystemPromptChange = onSystemPromptChange;
     this.container = document.getElementById('chat-overlay')!;
     this.msgList   = document.getElementById('chat-messages')!;
     this.input     = document.getElementById('chat-input') as HTMLInputElement;
     this.providerSelect = document.getElementById('provider-select') as HTMLSelectElement;
     this.modelSelect    = document.getElementById('model-select') as HTMLSelectElement;
+    this.systemPromptTextarea = document.getElementById('system-prompt') as HTMLTextAreaElement;
 
     document.getElementById('chat-header')!.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.model-selector')) return;
@@ -55,9 +60,27 @@ export class ChatOverlay {
     this.modelSelect.addEventListener('change', () => {
       this.onSwitch(this.providerSelect.value, this.modelSelect.value);
     });
+
+    // System prompt: save on blur or Ctrl+Enter
+    this.systemPromptTextarea.addEventListener('blur', () => {
+      this.onSystemPromptChange(this.systemPromptTextarea.value);
+    });
+    this.systemPromptTextarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        this.systemPromptTextarea.blur();
+      }
+    });
+
+    // Toggle system prompt panel
+    document.getElementById('system-prompt-toggle')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const section = document.getElementById('system-prompt-section');
+      if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    });
   }
 
-  updateProviderConfig(config: { providers: ProviderInfo[]; activeProvider: string; activeModel: string }): void {
+  updateProviderConfig(config: { providers: ProviderInfo[]; activeProvider: string; activeModel: string; systemPrompt?: string }): void {
     this.providers = config.providers;
     this.providerSelect.innerHTML = '';
     for (const p of config.providers) {
@@ -71,6 +94,10 @@ export class ChatOverlay {
     this.modelSelect.value = config.activeModel;
     const row = document.getElementById('model-selector-row');
     if (row) row.style.display = config.providers.length > 0 ? 'flex' : 'none';
+
+    if (config.systemPrompt && !this.systemPromptTextarea.dataset['userEdited']) {
+      this.systemPromptTextarea.value = config.systemPrompt;
+    }
   }
 
   private updateModelOptions(providerId: string): void {

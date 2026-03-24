@@ -26,6 +26,7 @@ whenReady(() => {
   const overlay = new ChatOverlay(
     (message) => { wsClient.sendUserChat(message); },
     (provider, model) => { wsClient.sendSwitchProvider(provider, model); },
+    (prompt) => { wsClient.sendSystemPrompt(prompt); },
   );
 
   wsClient = new WSClient(WS_URL, FRAMEWORK, {
@@ -49,4 +50,27 @@ whenReady(() => {
   setInterval(() => {
     wsClient.sendStateUpdate({ _clientSync: true, timestamp: Date.now() });
   }, 5000);
+
+  // ── Clear Scene button ───────────────────────────────────────────────────
+  document.getElementById('clear-scene-btn')?.addEventListener('click', () => {
+    wsClient.sendClearScene();
+  });
+
+  // ── Debug panel (Escape key toggle) ────────────────────────────────────
+  const debugPanel = document.getElementById('debug-panel');
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && debugPanel) {
+      debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+      if (debugPanel.style.display === 'block') {
+        const sceneEl = document.querySelector('a-scene');
+        const entities = sceneEl?.querySelectorAll('[id]') ?? [];
+        debugPanel.innerHTML = `
+          <h3 style="margin:0 0 8px">🛠 Debug Panel</h3>
+          <div><b>A-Frame entities:</b> ${entities.length}</div>
+          <div><b>Scene loaded:</b> ${(sceneEl as any)?.hasLoaded ?? false}</div>
+          <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
+        `;
+      }
+    }
+  });
 });

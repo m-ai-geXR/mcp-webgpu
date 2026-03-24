@@ -109,6 +109,14 @@ export class WSClient {
     this.send({ type: 'switch-provider', provider, model });
   }
 
+  sendSystemPrompt(prompt: string): void {
+    this.send({ type: 'update-system-prompt', prompt });
+  }
+
+  sendClearScene(): void {
+    this.send({ type: 'clear-scene' });
+  }
+
   stop(): void {
     this.stopped = true;
     this.ws?.close();

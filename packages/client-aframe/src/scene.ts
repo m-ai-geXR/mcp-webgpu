@@ -14,7 +14,10 @@ import {
   Vec3,
 } from './types.js';
 
-function vec3ToStr(v: Vec3): string { return `${v.x} ${v.y} ${v.z}`; }
+function vec3ToStr(v: Vec3 | string): string {
+  if (typeof v === 'string') return v;
+  return `${v.x} ${v.y} ${v.z}`;
+}
 function toRad(deg: number) { return (deg * Math.PI) / 180; }
 void toRad; // unused in A-Frame (uses degrees directly)
 
@@ -54,7 +57,7 @@ export class AFrameSceneManager {
       case 'cone':     return `primitive: cone; radiusBottom: ${r}; height: ${h}`;
       case 'torus':    return `primitive: torus; radius: ${r}; radiusTubular: ${r * 0.4}`;
       case 'plane':    return `primitive: plane; width: ${w}; height: ${h}`;
-      case 'capsule':  return `primitive: capsule; radius: ${r}; height: ${h}`;
+      case 'capsule':  return `primitive: cylinder; radius: ${r}; height: ${h + r * 2}; openEnded: false`;
       default:         return `primitive: box; width: ${w}; height: ${h}; depth: ${d}`;
     }
   }
@@ -69,6 +72,9 @@ export class AFrameSceneManager {
     if (m.wireframe)  attr += `; wireframe: true`;
     if (m.textureUrl) attr += `; src: ${m.textureUrl}`;
     if (m.emissive)   attr += `; emissive: ${m.emissive}`;
+    if ((m as Record<string, unknown>).emissiveIntensity !== undefined) {
+      attr += `; emissiveIntensity: ${(m as Record<string, unknown>).emissiveIntensity}`;
+    }
     return attr;
   }
 

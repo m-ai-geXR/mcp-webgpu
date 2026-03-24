@@ -59,3 +59,30 @@ function buildStateSnapshot() {
   // so we return a minimal marker — the real state is kept server-side.
   return { _clientSync: true, timestamp: Date.now() };
 }
+
+// ── Clear Scene button ───────────────────────────────────────────────────────
+document.getElementById('clear-scene-btn')?.addEventListener('click', () => {
+  wsClient.sendClearScene();
+});
+
+// ── Debug panel (Escape key toggle) ──────────────────────────────────────────
+const debugPanel = document.getElementById('debug-panel');
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && debugPanel) {
+    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+    if (debugPanel.style.display === 'block') refreshDebugPanel();
+  }
+});
+
+function refreshDebugPanel() {
+  if (!debugPanel) return;
+  const objs = scene.scene.children.filter(c => c.userData['managed']);
+  debugPanel.innerHTML = `
+    <h3 style="margin:0 0 8px">🛠 Debug Panel</h3>
+    <div><b>Scene children:</b> ${scene.scene.children.length}</div>
+    <div><b>Managed objects:</b> ${objs.length}</div>
+    <div><b>Camera pos:</b> (${scene.camera.position.x.toFixed(1)}, ${scene.camera.position.y.toFixed(1)}, ${scene.camera.position.z.toFixed(1)})</div>
+    <div><b>Renderer size:</b> ${scene.renderer.domElement.width}×${scene.renderer.domElement.height}</div>
+    <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
+  `;
+}

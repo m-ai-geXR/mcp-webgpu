@@ -146,7 +146,7 @@ export class WSServer {
             providers: this.chatRelay.getAvailableProviders(),
             activeProvider: this.chatRelay.getActiveProvider(),
             activeModel: this.chatRelay.getActiveModel(),
-            systemPrompt: this.chatRelay.getSystemPrompt(),
+            systemPrompt: this.chatRelay.getSystemPrompt(framework),
           }));
         }
         break;
@@ -200,17 +200,16 @@ export class WSServer {
         const model = (msg as unknown as { model?: string }).model;
         if (this.chatRelay && provider) {
           this.chatRelay.switchProvider(provider, model);
-          // Broadcast the updated config to all connected clients
-          const payload = JSON.stringify({
-            type: 'provider-config',
-            providers: this.chatRelay.getAvailableProviders(),
-            activeProvider: this.chatRelay.getActiveProvider(),
-            activeModel: this.chatRelay.getActiveModel(),
-            systemPrompt: this.chatRelay.getSystemPrompt(),
-          });
+          // Send per-framework system prompt to each client
           for (const s of this.sessions.values()) {
             if (s.ws.readyState === WebSocket.OPEN) {
-              s.ws.send(payload);
+              s.ws.send(JSON.stringify({
+                type: 'provider-config',
+                providers: this.chatRelay.getAvailableProviders(),
+                activeProvider: this.chatRelay.getActiveProvider(),
+                activeModel: this.chatRelay.getActiveModel(),
+                systemPrompt: this.chatRelay.getSystemPrompt(s.framework),
+              }));
             }
           }
           console.error(`[WSServer] Provider switched to ${provider}/${this.chatRelay.getActiveModel()} by ${sessionId}`);
@@ -220,9 +219,20 @@ export class WSServer {
 
       case 'update-system-prompt': {
         const prompt = (msg as unknown as { prompt: string }).prompt;
-        if (this.chatRelay && typeof prompt === 'string') {
-          this.chatRelay.setSystemPrompt(prompt);
-          console.error(`[WSServer] System prompt updated by ${sessionId}`);
+        const session = this.sessions.get(sessionId);
+        if (this.chatRelay && typeof prompt === 'string' && session) {
+          this.chatRelay.setSystemPrompt(prompt, session.framework);
+          console.error(`[WSServer] System prompt updated for ${session.framework} by ${sessionId}`);
+        }
+        break;
+      }
+
+      case 'clear-scene': {
+        if (this.stateManager) {
+          this.stateManager.clearScene();
+          const state = this.stateManager.getState();
+          this.sendCommand({ action: 'loadScene', commandId: uuidv4(), state });
+          console.error(`[WSServer] Scene cleared by ${sessionId}`);
         }
         break;
       }

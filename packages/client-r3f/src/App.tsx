@@ -9,6 +9,7 @@ import { SceneCanvas } from './SceneCanvas.js';
 import { WSClient }    from './ws-client.js';
 import { ChatOverlay } from './overlay/ChatOverlay.js';
 import { dispatch }    from './commands/dispatch.js';
+import { useSceneStore } from './store/sceneStore.js';
 
 const WS_URL    = (import.meta.env.VITE_WS_URL as string | undefined) ?? 'ws://localhost:8083';
 const FRAMEWORK = 'r3f';
@@ -22,6 +23,7 @@ export function App() {
     overlayRef.current = new ChatOverlay(
       (msg) => wsRef.current?.sendUserChat(msg),
       (provider, model) => wsRef.current?.sendSwitchProvider(provider, model),
+      (prompt) => wsRef.current?.sendSystemPrompt(prompt),
     );
 
     // WebSocket client
@@ -48,9 +50,38 @@ export function App() {
     // Keep-alive ping
     const keepAlive = setInterval(() => wsRef.current?.sendPing(), 25_000);
 
+    // Clear Scene button
+    const clearBtn = document.getElementById('clear-scene-btn');
+    const handleClear = () => wsRef.current?.sendClearScene();
+    clearBtn?.addEventListener('click', handleClear);
+
+    // Debug panel (Escape key toggle)
+    const debugPanel = document.getElementById('debug-panel');
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && debugPanel) {
+        debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+        if (debugPanel.style.display === 'block') {
+          const store = useSceneStore.getState();
+          const objCount = Object.keys(store.objects).length;
+          const lightCount = Object.keys(store.lights).length;
+          const cam = store.camera;
+          debugPanel.innerHTML = `
+            <h3 style="margin:0 0 8px">🛠 Debug Panel</h3>
+            <div><b>Objects:</b> ${objCount}</div>
+            <div><b>Lights:</b> ${lightCount}</div>
+            <div><b>Camera pos:</b> (${cam.position?.x.toFixed(1) ?? '?'}, ${cam.position?.y.toFixed(1) ?? '?'}, ${cam.position?.z.toFixed(1) ?? '?'})</div>
+            <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
+          `;
+        }
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+
     return () => {
       clearInterval(statePing);
       clearInterval(keepAlive);
+      clearBtn?.removeEventListener('click', handleClear);
+      document.removeEventListener('keydown', handleEsc);
     };
   }, []);
 

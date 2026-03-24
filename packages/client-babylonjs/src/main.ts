@@ -18,13 +18,14 @@ function main(): void {
   const overlay = new ChatOverlay(
     (msg) => wsClient.sendUserChat(msg),
     (provider, model) => wsClient.sendSwitchProvider(provider, model),
+    (prompt) => wsClient.sendSystemPrompt(prompt),
   );
 
   wsClient = new WSClient(WS_URL, FRAMEWORK, {
     onCommand(cmd) {
-      const c = cmd as { action: string; payload?: unknown; requestId?: string };
+      const c = cmd as { action: string; requestId?: string };
 
-      if (c.action === 'take-screenshot') {
+      if (c.action === 'takeScreenshot') {
         const dataUrl = scene.takeScreenshot();
         wsClient.sendScreenshot(c.requestId ?? '', dataUrl);
         return;
@@ -53,6 +54,32 @@ function main(): void {
 
   // Keep WebSocket alive during long idle periods
   setInterval(() => wsClient.sendPing(), 25_000);
+
+  // ── Clear Scene button ─────────────────────────────────────────────────
+  document.getElementById('clear-scene-btn')?.addEventListener('click', () => {
+    wsClient.sendClearScene();
+  });
+
+  // ── Debug panel (Escape key toggle) ────────────────────────────────────
+  const debugPanel = document.getElementById('debug-panel');
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && debugPanel) {
+      debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+      if (debugPanel.style.display === 'block') {
+        const meshes = scene.scene.meshes.length;
+        const lights = scene.scene.lights.length;
+        const cam = scene.scene.activeCamera;
+        const pos = cam?.position;
+        debugPanel.innerHTML = `
+          <h3 style="margin:0 0 8px">🛠 Debug Panel</h3>
+          <div><b>Meshes:</b> ${meshes}</div>
+          <div><b>Lights:</b> ${lights}</div>
+          <div><b>Camera pos:</b> (${pos?.x.toFixed(1) ?? '?'}, ${pos?.y.toFixed(1) ?? '?'}, ${pos?.z.toFixed(1) ?? '?'})</div>
+          <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
+        `;
+      }
+    }
+  });
 }
 
 main();
