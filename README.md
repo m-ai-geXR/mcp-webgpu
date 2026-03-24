@@ -14,7 +14,8 @@
 - **23 MCP tools** — objects, lights, cameras, animation, environment, scene I/O, undo/redo, screenshots, and in-world chat
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in *that* engine (adapted from the iOS maigeXR app)
 - **In-world chat** — press **`~`** to talk to the AI without leaving the 3D viewport; it reads your messages and answers in a floating overlay
-- **One command** — `pnpm dev` starts the server + all four clients simultaneously
+- **Scene-aware AI** — 20-turn conversation history + live scene state injection ensures the AI makes incremental edits, not destructive rebuilds
+- **One command** — `pnpm dev` starts the server + all four clients simultaneously; auto-opens the Three.js client in your browser
 - **Hot-swappable AI provider** — change provider mid-session from the client dropdown; no restart needed
 
 ---
@@ -39,16 +40,20 @@ Add at least one API key. All variables:
 | Variable | Default | Purpose |
 |---|---|---|
 | `WS_PORT` | `8083` | WebSocket bridge port |
-| `CHAT_PROVIDER` | `openai` | Active AI provider for direct chat |
-| `OPENAI_API_KEY` | — | OpenAI (GPT-4.1) |
-| `ANTHROPIC_API_KEY` | — | Anthropic (Claude Sonnet 4) |
-| `GOOGLE_API_KEY` | — | Google Gemini 2.5 Pro |
-| `MISTRAL_API_KEY` | — | Mistral Large |
-| `GROQ_API_KEY` | — | Groq (Llama 3.3 70B) |
-| `XAI_API_KEY` | — | xAI / Grok-3 |
-| `COHERE_API_KEY` | — | Cohere Command R+ |
-| `TOGETHER_API_KEY` | — | Together.ai (Llama 3.3 70B Turbo) |
+| `CHAT_PROVIDER` | `openai` | Active AI provider (`openai` \| `anthropic` \| `google` \| `mistral` \| `groq` \| `xai` \| `cohere` \| `together` \| `ollama`) |
+| `OPENAI_API_KEY` | — | OpenAI |
+| `ANTHROPIC_API_KEY` | — | Anthropic |
+| `GOOGLE_API_KEY` | — | Google Gemini |
+| `MISTRAL_API_KEY` | — | Mistral |
+| `GROQ_API_KEY` | — | Groq |
+| `XAI_API_KEY` | — | xAI / Grok |
+| `COHERE_API_KEY` | — | Cohere |
+| `TOGETHER_API_KEY` | — | Together.ai |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama |
+| `AUTO_OPEN_BROWSER` | `true` | Open browser on startup |
+| `DEFAULT_FRAMEWORK` | `threejs` | Which client to auto-open (`threejs` \| `aframe` \| `babylonjs` \| `r3f`) |
+
+Each provider also has a `*_MODEL` env var (e.g. `OPENAI_MODEL=gpt-4.1`) — see `.env.example` for all available models.
 
 > **Two chat modes:**
 > - **Relay mode** (no key needed): the MCP host AI (Copilot, Claude Desktop) handles in-world chat by polling `getPendingUserMessages`.
@@ -85,7 +90,9 @@ Alternatively, add to your global VS Code settings:
       "command": "node",
       "args": ["packages/server/build/main.js"],
       "env": {
-        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}",
+        "ANTHROPIC_API_KEY": "${env:ANTHROPIC_API_KEY}",
+        "GOOGLE_API_KEY": "${env:GOOGLE_API_KEY}"
       }
     }
   }
@@ -96,19 +103,19 @@ Alternatively, add to your global VS Code settings:
 
 ## Supported AI Providers (9)
 
-| Provider | Default Model | Notes |
-|---|---|---|
-| **OpenAI** | `gpt-4.1` | Best general-purpose option |
-| **Anthropic** | `claude-sonnet-4-6` | Strong reasoning |
-| **Google Gemini** | `gemini-2.5-pro` | Large context, multimodal |
-| **Mistral** | `mistral-large-latest` | Fast + capable |
-| **Groq** | `llama-3.3-70b-versatile` | Blazing inference speed |
-| **xAI / Grok** | `grok-3` | Creative scenes |
-| **Cohere** | `command-r-plus` | Tool-use focused |
-| **Together.ai** | `Llama-3.3-70B-Instruct-Turbo` | Open-source, fast |
-| **Ollama** | `llama3.2` | Fully local, no API key |
+| Provider | Default Model | Available Models | Notes |
+|---|---|---|---|
+| **OpenAI** | `gpt-4.1` | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, o3, o3-mini, o4-mini | Best general-purpose option |
+| **Anthropic** | `claude-sonnet-4-6` | claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5 | Strong reasoning |
+| **Google Gemini** | `gemini-2.5-pro` | gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.0-flash | Large context, multimodal |
+| **Mistral** | `mistral-large-latest` | mistral-large, mistral-medium, mistral-small, open-mistral-nemo | Fast + capable |
+| **Groq** | `llama-3.3-70b-versatile` | llama-3.3-70b, deepseek-r1-distill-llama-70b, llama-3.1-8b-instant, mixtral-8x7b | Blazing inference speed |
+| **xAI / Grok** | `grok-3` | grok-3, grok-3-mini, grok-3-fast, grok-2 | Creative scenes |
+| **Cohere** | `command-r-plus` | command-r-plus, command-r, command, command-light | Tool-use focused |
+| **Together.ai** | `Llama-3.3-70B-Instruct-Turbo` | Llama-3.3-70B, Llama-3.1-405B, DeepSeek-R1, Qwen2.5-72B | Open-source, fast |
+| **Ollama** | `llama3.2` | llama3.2, mistral, phi4, gemma3, qwen2.5, deepseek-r1 | Fully local, no API key |
 
-Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROVIDER` in `.env`.
+Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROVIDER` in `.env`. Override the model per-provider with `*_MODEL` env vars (see `.env.example`).
 
 ---
 
@@ -145,6 +152,24 @@ Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROV
 | `getPendingUserMessages` | Retrieve messages typed from inside the 3D canvas |
 | `sendChatMessage` | Display AI reply in the floating overlay |
 | `clearPendingMessages` | Flush the queue |
+
+---
+
+## MCP Resources
+
+| URI | Description |
+|---|---|
+| `maige-3d://scene/state` | Live JSON snapshot of all objects, lights, camera, and environment |
+| `maige-3d://server/sessions` | List of currently connected browser sessions (id, framework, timestamp) |
+
+---
+
+## MCP Prompts
+
+| Prompt | Description |
+|---|---|
+| `3d-world-assistant` | Full system context for AI assistants — scene tools, chat workflow, incremental update rules |
+| `framework-guide` | Per-framework geometry/material/lighting tips. Accepts `framework` argument: `threejs`, `aframe`, `babylonjs`, `r3f` |
 
 ---
 
@@ -194,20 +219,25 @@ Press **`~`** (backtick) or click **AI Chat** in the bottom-right corner. Type a
                               │     └── adapters/ (per-framework)    │
                               └──────────┬───────────────────────────┘
                                          │ WebSocket
-                    ┌────────────────────┼────────────────────┐
-                    │                    │                     │
-         ┌──────────┴──┐    ┌───────────┴──┐    ┌────────────┴─┐
-         │  Three.js    │    │  A-Frame     │    │  Babylon.js   │
-         │  :5173       │    │  :5174       │    │  :5175        │
-         └─────────────┘    └──────────────┘    └───────────────┘
-                                                        │
-                                              ┌─────────┴──────┐
-                                              │  React Three   │
-                                              │  Fiber :5176   │
-                                              └────────────────┘
+        ┌────────────────┬───────────────┼───────────────┬────────────────┐
+        ▼                ▼               ▼               ▼                │
+┌──────────────┐ ┌──────────────┐ ┌───────────────┐ ┌──────────────┐     │
+│  Three.js    │ │  A-Frame     │ │  Babylon.js   │ │  R3F / React │     │
+│  :5173       │ │  :5174       │ │  :5175        │ │  :5176       │     │
+│ ┌──────────┐ │ │ ┌──────────┐ │ │ ┌──────────┐  │ │ ┌──────────┐ │     │
+│ │VR/WebXR  │ │ │ │VR/WebXR  │ │ │ │VR/WebXR  │  │ │ │VR/WebXR  │ │     │
+│ │ChatPanel │ │ │ │ChatPanel │ │ │ │ChatPanel  │  │ │ │ChatPanel │ │     │
+│ └──────────┘ │ │ └──────────┘ │ │ └──────────┘  │ │ └──────────┘ │     │
+└──────────────┘ └──────────────┘ └───────────────┘ └──────────────┘
 ```
 
 Each client connects via WebSocket to the same MCP server. The server maintains a single canonical scene state and pushes commands through per-framework adapters that translate Vec3 formats, material models, and geometry names into each engine's native representation.
+
+**Key server features:**
+- **Conversation history** — the AI remembers the last 20 turns of dialogue, avoiding destructive scene rebuilds
+- **Scene state injection** — every AI call includes a summary of current objects, lights, and environment so the AI knows what already exists
+- **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in that specific engine
+- **Undo/redo** — 20-deep snapshot stack on the server, triggered via MCP tools
 
 ---
 
@@ -215,7 +245,8 @@ Each client connects via WebSocket to the same MCP server. The server maintains 
 
 ```
 mcp-webgpu/
-├── .env.example
+├── .env.example                   ← all env vars + model lists documented
+├── .vscode/mcp.json               ← pre-configured for VS Code Copilot agent mode
 ├── package.json                   ← pnpm workspace root
 ├── PLAN.md                        ← full architecture plan
 ├── packages/
