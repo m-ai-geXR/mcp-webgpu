@@ -8,9 +8,14 @@
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, useGLTF } from '@react-three/drei';
+import { createXRStore, XR } from '@react-three/xr';
 import * as THREE from 'three';
 import { useSceneStore } from './store/sceneStore.js';
 import { SceneObject, SceneLight } from './types.js';
+import { VRChatPanel } from './vr/VRChatPanel.js';
+
+// ── XR store (shared with App.tsx for "Enter VR" button) ──────────────────
+export const xrStore = createXRStore();
 
 // ── Easing helpers ─────────────────────────────────────────────────────────
 
@@ -269,7 +274,13 @@ function CameraSync() {
 
 // ── Main scene canvas ──────────────────────────────────────────────────────
 
-export function SceneCanvas({ onScreenshot }: { onScreenshot: (requestId: string, dataUrl: string) => void }) {
+export function SceneCanvas({
+  onScreenshot,
+  vrMessages,
+}: {
+  onScreenshot: (requestId: string, dataUrl: string) => void;
+  vrMessages?: Array<{ role: 'user' | 'ai'; text: string }>;
+}) {
   const objects    = useSceneStore((s) => s.objects);
   const lights     = useSceneStore((s) => s.lights);
   const env        = useSceneStore((s) => s.environment);
@@ -296,49 +307,54 @@ export function SceneCanvas({ onScreenshot }: { onScreenshot: (requestId: string
       camera={{ position: [5, 5, 10], fov: 60, near: 0.1, far: 2000 }}
       gl={{ preserveDrawingBuffer: true }}
     >
-      {/* Background colour */}
-      <color attach="background" args={[bgColor]} />
+      <XR store={xrStore}>
+        {/* Background colour */}
+        <color attach="background" args={[bgColor]} />
 
-      {/* Fog */}
-      {env.fog && (
-        <fog attach="fog" args={[env.fog.color, env.fog.near, env.fog.far]} />
-      )}
+        {/* Fog */}
+        {env.fog && (
+          <fog attach="fog" args={[env.fog.color, env.fog.near, env.fog.far]} />
+        )}
 
-      {/* Camera sync when store changes */}
-      <CameraSync />
+        {/* Camera sync when store changes */}
+        <CameraSync />
 
-      {/* Orbit controls */}
-      <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+        {/* Orbit controls */}
+        <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
 
-      {/* Grid */}
-      <Grid
-        position={[0, -0.001, 0]}
-        args={[30, 30]}
-        cellSize={1}
-        cellThickness={0.5}
-        cellColor="#2a2a4a"
-        sectionSize={5}
-        sectionThickness={1}
-        sectionColor="#3a3a6a"
-        fadeDistance={50}
-        infiniteGrid
-      />
+        {/* Grid */}
+        <Grid
+          position={[0, -0.001, 0]}
+          args={[30, 30]}
+          cellSize={1}
+          cellThickness={0.5}
+          cellColor="#2a2a4a"
+          sectionSize={5}
+          sectionThickness={1}
+          sectionColor="#3a3a6a"
+          fadeDistance={50}
+          infiniteGrid
+        />
 
-      {/* Lights */}
-      {Object.values(lights).map((l) => (
-        <SceneLightComponent key={l.id} light={l} />
-      ))}
+        {/* Lights */}
+        {Object.values(lights).map((l) => (
+          <SceneLightComponent key={l.id} light={l} />
+        ))}
 
-      {/* Objects */}
-      {Object.values(objects).map((o) => (
-        <SceneObjectMesh key={o.id} obj={o} registerRef={registerRef} />
-      ))}
+        {/* Objects */}
+        {Object.values(objects).map((o) => (
+          <SceneObjectMesh key={o.id} obj={o} registerRef={registerRef} />
+        ))}
 
-      {/* Animation ticker (runs in useFrame, outside React re-renders) */}
-      <AnimationTicker meshRefs={meshRefsMap} />
+        {/* VR chat panel */}
+        <VRChatPanel messages={vrMessages ?? []} />
 
-      {/* Screenshot capturer */}
-      <ScreenshotCapturer onCapture={handleScreenshot} />
+        {/* Animation ticker (runs in useFrame, outside React re-renders) */}
+        <AnimationTicker meshRefs={meshRefsMap} />
+
+        {/* Screenshot capturer */}
+        <ScreenshotCapturer onCapture={handleScreenshot} />
+      </XR>
     </Canvas>
   );
 }

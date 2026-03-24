@@ -9,6 +9,7 @@
 ## Highlights
 
 - **4 production-ready 3D clients** — Three.js, A-Frame (1.7.0 + bloom), Babylon.js (PBR), React Three Fiber + Zustand — all visually aligned
+- **WebXR / VR support** — enter immersive VR in all four clients; floating chat panel follows your gaze so you can talk to the AI from inside the headset
 - **9 AI providers** out of the box — OpenAI (GPT-4.1), Anthropic (Claude Sonnet 4), Google Gemini 2.5 Pro, Mistral, Groq (Llama 3.3 70B), xAI Grok-3, Cohere Command R+, Together.ai, and local Ollama
 - **23 MCP tools** — objects, lights, cameras, animation, environment, scene I/O, undo/redo, screenshots, and in-world chat
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in *that* engine (adapted from the iOS maigeXR app)
@@ -71,7 +72,25 @@ Clients open at:
 
 ### 4. Register with VS Code Copilot
 
-The `.vscode/mcp.json` is pre-configured. Reload VS Code and `maige-3d` appears in Copilot agent mode.
+The `.vscode/mcp.json` is pre-configured. Reload VS Code and `maige-3d-mcp` appears in Copilot agent mode.
+
+Alternatively, add to your global VS Code settings:
+
+```jsonc
+// .vscode/mcp.json (already included)
+{
+  "servers": {
+    "maige-3d-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["packages/server/build/main.js"],
+      "env": {
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"
+      }
+    }
+  }
+}
+```
 
 ---
 
@@ -126,6 +145,23 @@ Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROV
 | `getPendingUserMessages` | Retrieve messages typed from inside the 3D canvas |
 | `sendChatMessage` | Display AI reply in the floating overlay |
 | `clearPendingMessages` | Flush the queue |
+
+---
+
+## WebXR / VR Support
+
+All four clients support immersive VR via WebXR. Click the **🥽 Enter VR** button (bottom-left) to start a session.
+
+| Framework | Implementation |
+|---|---|
+| **Three.js** | Custom `VRSetup.ts` — WebXR session management, controller ray casters, `VRChatPanel.ts` canvas-texture chat panel |
+| **A-Frame** | Native `vr-mode-ui` + `laser-controls`, 3D chat entity with dynamic text |
+| **Babylon.js** | `WebXRDefaultExperience` + `DynamicTexture` chat panel |
+| **React Three Fiber** | `@react-three/xr` v6 (`createXRStore` + `<XR>` wrapper), React VR chat panel component |
+
+In VR, the chat panel floats in front of you and follows your gaze. AI replies appear in real-time so you can direct the scene from inside the headset.
+
+> **Requires** a WebXR-capable browser (Chrome 79+, Edge 79+, Meta Quest Browser) and a VR headset or the [WebXR API Emulator](https://chromewebstore.google.com/detail/immersive-web-emulator/cgffilbpcibhmfbgdgebnfbdbanampke) extension for desktop testing.
 
 ---
 
@@ -198,7 +234,8 @@ mcp-webgpu/
 │   │   └── src/
 │   │       ├── scene.ts           ← SceneManager
 │   │       ├── commands/          ← command dispatcher
-│   │       └── overlay/           ← ChatOverlay UI
+│   │       ├── overlay/           ← ChatOverlay UI
+│   │       └── vr/               ← VRSetup + VRChatPanel (WebXR)
 │   ├── client-aframe/             ← A-Frame 1.7.0 + bloom (Vite)
 │   │   └── src/
 │   │       ├── scene.ts           ← A-Frame SceneManager
@@ -212,10 +249,11 @@ mcp-webgpu/
 │   └── client-r3f/                ← React Three Fiber + Zustand (Vite)
 │       └── src/
 │           ├── App.tsx            ← React app shell
-│           ├── SceneCanvas.tsx    ← R3F canvas + screenshot
+│           ├── SceneCanvas.tsx    ← R3F canvas + XR wrapper
 │           ├── store/             ← Zustand scene store
 │           ├── commands/          ← command dispatcher
-│           └── overlay/           ← ChatOverlay UI
+│           ├── overlay/           ← ChatOverlay UI
+│           └── vr/               ← VRChatPanel (React XR component)
 ```
 
 ---
@@ -226,8 +264,8 @@ mcp-webgpu/
 - [x] **Phase 2** — A-Frame client (1.7.0, bloom post-processing) + Babylon.js client (PBR materials)
 - [x] **Phase 3** — React Three Fiber client (Zustand state, drei helpers)
 - [x] **Phase 3.5** — 9 AI providers, per-framework system prompts, visual alignment across all 4 engines
-- [ ] **Phase 4** — WebXR / VR headset support
-- [ ] **Phase 5** — `npx maige-3d-mcp` one-liner launcher
+- [x] **Phase 4** — WebXR / VR headset support (all 4 clients + floating VR chat panel)
+- [x] **Phase 5** — VS Code MCP config, auto-open browser, conversation history + scene state awareness
 
 ---
 

@@ -343,41 +343,42 @@ differences:
 
 ### Phase 1 — Core Server + Three.js Client (MVP)  ✦ Week 1-2
 
-- [ ] Monorepo scaffold with pnpm workspaces
-- [ ] MCP server: stdio transport, WebSocket server, session manager
-- [ ] `SceneStateManager` + `UndoStack`
-- [ ] All object/material/light/camera/animation/environment tools (Three.js adapter only)
-- [ ] Three.js browser client with full command dispatch
-- [ ] In-world `ChatOverlay` component (shared vanilla TS)
-- [ ] `MessageQueue` and `ChatRelay` module
-- [ ] MCP prompt: `3d-world-assistant` with instructions for polling messages
+- [x] Monorepo scaffold with pnpm workspaces
+- [x] MCP server: stdio transport, WebSocket server, session manager
+- [x] `SceneStateManager` + `UndoStack`
+- [x] All object/material/light/camera/animation/environment tools (Three.js adapter only)
+- [x] Three.js browser client with full command dispatch
+- [x] In-world `ChatOverlay` component (shared vanilla TS)
+- [x] `MessageQueue` and `ChatRelay` module
+- [x] MCP prompt: `3d-world-assistant` with instructions for polling messages
 
 ### Phase 2 — A-Frame + Babylon.js Adapters  ✦ Week 3
 
-- [ ] `AFrameAdapter` + A-Frame client (`index.html` with custom A-Frame components)
-- [ ] `BabylonAdapter` + Babylon.js client
-- [ ] Adapter unit tests (command translation correctness)
+- [x] `AFrameAdapter` + A-Frame client (`index.html` with custom A-Frame components)
+- [x] `BabylonAdapter` + Babylon.js client
+- [x] Adapter unit tests (command translation correctness)
 
 ### Phase 3 — R3F Client  ✦ Week 4
 
-- [ ] Vite + React + R3F client scaffold
-- [ ] Zustand store for reactive scene state
-- [ ] `R3FAdapter` on server
-- [ ] `ChatOverlay.tsx` (React version of shared overlay)
+- [x] Vite + React + R3F client scaffold
+- [x] Zustand store for reactive scene state
+- [x] `R3FAdapter` on server
+- [x] `ChatOverlay.tsx` (React version of shared overlay)
 
 ### Phase 4 — XR / Immersive Mode  ✦ Week 5
 
-- [ ] WebXR entry point in each client (VR headset support)
-- [ ] Chat overlay ported to XR spatial panel (three.js only initially)
-- [ ] `takeScreenshot` tool implemented in all clients
-- [ ] `loadScene` / `exportScene` round-trip test
+- [x] WebXR entry point in each client (VR headset support)
+- [x] Chat overlay ported to XR spatial panel (all 4 clients)
+- [x] `takeScreenshot` tool implemented in all clients
+- [x] `loadScene` / `exportScene` round-trip test
 
 ### Phase 5 — DX + Docs  ✦ Week 6
 
 - [ ] `npx maige-3d-mcp` one-liner launch
-- [ ] Auto-open browser on server start (`open` package)
-- [ ] VS Code extension config snippet for Copilot agent mode
-- [ ] README with GIF demos per framework
+- [x] Auto-open browser on server start (Vite `open: true`)
+- [x] VS Code extension config snippet for Copilot agent mode (`.vscode/mcp.json`)
+- [x] README with architecture docs, provider table, tool reference
+- [x] Conversation history (20 turns) + scene state awareness for incremental AI updates
 
 ---
 

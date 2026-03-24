@@ -4,8 +4,8 @@
  * App — top-level React component.
  * Mounts the R3F canvas and wires up WSClient + ChatOverlay.
  */
-import { useEffect, useRef } from 'react';
-import { SceneCanvas } from './SceneCanvas.js';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { SceneCanvas, xrStore } from './SceneCanvas.js';
 import { WSClient }    from './ws-client.js';
 import { ChatOverlay } from './overlay/ChatOverlay.js';
 import { dispatch }    from './commands/dispatch.js';
@@ -17,11 +17,28 @@ const FRAMEWORK = 'r3f';
 export function App() {
   const wsRef      = useRef<WSClient | null>(null);
   const overlayRef = useRef<ChatOverlay | null>(null);
+  const [vrMessages, setVrMessages] = useState<Array<{ role: 'user' | 'ai'; text: string }>>([]);
+  const [vrSupported, setVrSupported] = useState(false);
+  const vrSupportedRef = useRef(false);
+
+  // Check WebXR support
+  useEffect(() => {
+    if ('xr' in navigator) {
+      (navigator as Navigator & { xr: XRSystem }).xr
+        .isSessionSupported('immersive-vr')
+        .then((ok) => { setVrSupported(ok); vrSupportedRef.current = ok; })
+        .catch(() => {});
+    }
+  }, []);
+
+  const addVrMessage = useCallback((role: 'user' | 'ai', text: string) => {
+    setVrMessages((prev) => [...prev.slice(-19), { role, text }]);
+  }, []);
 
   useEffect(() => {
     // Chat overlay lives in the DOM (outside React) — instantiate once
     overlayRef.current = new ChatOverlay(
-      (msg) => wsRef.current?.sendUserChat(msg),
+      (msg) => { wsRef.current?.sendUserChat(msg); addVrMessage('user', msg); },
       (provider, model) => wsRef.current?.sendSwitchProvider(provider, model),
       (prompt) => wsRef.current?.sendSystemPrompt(prompt),
     );
@@ -33,6 +50,7 @@ export function App() {
       },
       onAIReply(message) {
         overlayRef.current?.receiveAIReply(message);
+        addVrMessage('ai', message);
       },
       onStatusChange(status) {
         overlayRef.current?.setStatus(status);
@@ -70,6 +88,7 @@ export function App() {
             <div><b>Objects:</b> ${objCount}</div>
             <div><b>Lights:</b> ${lightCount}</div>
             <div><b>Camera pos:</b> (${cam.position?.x.toFixed(1) ?? '?'}, ${cam.position?.y.toFixed(1) ?? '?'}, ${cam.position?.z.toFixed(1) ?? '?'})</div>
+            <div><b>WebXR:</b> ${vrSupportedRef.current ? '✅ Supported' : '❌ Not available'}</div>
             <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
           `;
         }
@@ -83,7 +102,7 @@ export function App() {
       clearBtn?.removeEventListener('click', handleClear);
       document.removeEventListener('keydown', handleEsc);
     };
-  }, []);
+  }, [addVrMessage]);
 
   const handleScreenshot = (requestId: string, dataUrl: string) => {
     wsRef.current?.sendScreenshot(requestId, dataUrl);
@@ -91,7 +110,31 @@ export function App() {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <SceneCanvas onScreenshot={handleScreenshot} />
+      <SceneCanvas onScreenshot={handleScreenshot} vrMessages={vrMessages} />
+      {vrSupported && (
+        <button
+          id="vr-button"
+          onClick={() => xrStore.enterVR()}
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            left: 20,
+            zIndex: 110,
+            padding: '10px 20px',
+            border: '1px solid rgba(100,100,220,0.5)',
+            borderRadius: 10,
+            background: 'rgba(20,20,50,0.85)',
+            color: '#a5b4fc',
+            fontSize: 14,
+            fontWeight: 600,
+            fontFamily: '"Segoe UI", system-ui, sans-serif',
+            cursor: 'pointer',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          🥽 Enter VR
+        </button>
+      )}
     </div>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "maige-3d-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["packages/server/build/main.js"],
+      "env": {
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}",
+        "ANTHROPIC_API_KEY": "${env:ANTHROPIC_API_KEY}",
+        "GOOGLE_GENERATIVE_AI_API_KEY": "${env:GOOGLE_GENERATIVE_AI_API_KEY}",
+        "MISTRAL_API_KEY": "${env:MISTRAL_API_KEY}",
+        "GROQ_API_KEY": "${env:GROQ_API_KEY}",
+        "XAI_API_KEY": "${env:XAI_API_KEY}",
+        "COHERE_API_KEY": "${env:COHERE_API_KEY}",
+        "TOGETHER_API_KEY": "${env:TOGETHER_API_KEY}"
+      }
+    }
+  }
+}
