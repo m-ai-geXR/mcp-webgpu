@@ -1,4 +1,4 @@
-# maige-3d-mcp
+# m{ai}geXR-3d-mcp
 
 **The multi-framework 3D MCP server that actually works.** Control live **Three.js**, **A-Frame**, **Babylon.js**, and **React Three Fiber** scenes from any MCP-capable AI — GitHub Copilot, Claude Desktop, Cursor, you name it — with **in-world async chat** so you can talk to the AI *from inside the 3D canvas* while it reshapes the world around you.
 
