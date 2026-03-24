@@ -29,6 +29,45 @@ whenReady(() => {
     (prompt) => { wsClient.sendSystemPrompt(prompt); },
   );
 
+  // ── VR chat panel helpers ──────────────────────────────────────────────
+  const vrChatPanel = document.getElementById('vr-chat-panel');
+  const vrChatText  = document.getElementById('vr-chat-text');
+  const vrChatMessages: string[] = [];
+  const MAX_VR_MESSAGES = 6;
+
+  function updateVRChatText(): void {
+    if (!vrChatText) return;
+    const header = '🎮 VR Chat\n─────────────────\n';
+    const body = vrChatMessages.length > 0
+      ? vrChatMessages.join('\n')
+      : 'Press ~ to type…';
+    vrChatText.setAttribute('value', header + body);
+  }
+
+  function addVRMessage(role: 'user' | 'ai', text: string): void {
+    const prefix = role === 'user' ? '🗣  ' : '🤖 ';
+    vrChatMessages.push(prefix + text.slice(0, 80));
+    while (vrChatMessages.length > MAX_VR_MESSAGES) vrChatMessages.shift();
+    updateVRChatText();
+  }
+
+  // ── VR mode events ─────────────────────────────────────────────────────
+  const sceneEl = document.querySelector('a-scene') as HTMLElement & { is: (s: string) => boolean };
+  sceneEl?.addEventListener('enter-vr', () => {
+    if (vrChatPanel) vrChatPanel.setAttribute('visible', 'true');
+    // Hide DOM overlays in VR
+    document.querySelectorAll('#chat-panel, #status, #debug-panel').forEach((el) => {
+      (el as HTMLElement).style.display = 'none';
+    });
+  });
+  sceneEl?.addEventListener('exit-vr', () => {
+    if (vrChatPanel) vrChatPanel.setAttribute('visible', 'false');
+    const chatPanel = document.getElementById('chat-panel');
+    if (chatPanel) chatPanel.style.display = '';
+    const status = document.getElementById('status');
+    if (status) status.style.display = '';
+  });
+
   wsClient = new WSClient(WS_URL, FRAMEWORK, {
     onCommand: (cmd) => {
       dispatch(cmd, scene, (requestId, dataUrl) => {
@@ -37,6 +76,7 @@ whenReady(() => {
     },
     onAIReply: (message) => {
       overlay.receiveAIReply(message);
+      addVRMessage('ai', message);
     },
     onStatusChange: (status) => {
       overlay.setStatus(status);

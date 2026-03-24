@@ -33,6 +33,9 @@ export class SceneManager {
   private animations = new Map<string, ActiveAnimation>();
   private loader   = new THREE.TextureLoader();
 
+  /** Optional callback invoked every frame (for VR panel updates, etc.). */
+  onTick: ((time: number) => void) | null = null;
+
   constructor(container: HTMLElement) {
     // ── Renderer ────────────────────────────────────────────────
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -106,6 +109,7 @@ export class SceneManager {
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
+    this.onTick?.(time);
   }
 
   // ─── Object management ────────────────────────────────────────

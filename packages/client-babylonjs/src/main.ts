@@ -36,6 +36,7 @@ function main(): void {
 
     onAIReply(message) {
       overlay.receiveAIReply(message);
+      scene.addVRChatMessage('ai', message);
     },
 
     onStatusChange(status) {
@@ -70,11 +71,13 @@ function main(): void {
         const lights = scene.scene.lights.length;
         const cam = scene.scene.activeCamera;
         const pos = cam?.position;
+        const xrStatus = scene.isPresenting ? '🟢 In VR' : '⚪ Desktop';
         debugPanel.innerHTML = `
           <h3 style="margin:0 0 8px">🛠 Debug Panel</h3>
           <div><b>Meshes:</b> ${meshes}</div>
           <div><b>Lights:</b> ${lights}</div>
           <div><b>Camera pos:</b> (${pos?.x.toFixed(1) ?? '?'}, ${pos?.y.toFixed(1) ?? '?'}, ${pos?.z.toFixed(1) ?? '?'})</div>
+          <div><b>XR:</b> ${xrStatus}</div>
           <div style="margin-top:6px;font-size:0.8em;opacity:0.7">Press Escape to close</div>
         `;
       }

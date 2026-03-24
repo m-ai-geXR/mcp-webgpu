@@ -282,7 +282,7 @@
     </style>
   </head>
   <body>
-    <!-- A-Frame scene -->
+    <!-- A-Frame scene — WebXR VR enabled -->
     <a-scene
       id="aframe-scene"
       effects="bloom"
@@ -290,7 +290,8 @@
       background="color: #1a1a2e"
       fog="type: linear; color: #1a1a2e; near: 50; far: 200"
       shadow="type: pcfsoft"
-      vr-mode-ui="enabled: false"
+      vr-mode-ui="enabled: true"
+      webxr="requiredFeatures: local-floor; optionalFeatures: hand-tracking, bounded-floor"
     >
       <!-- Assets -->
       <a-assets id="scene-assets"></a-assets>
@@ -308,6 +309,16 @@
         <a-camera id="main-camera" look-controls wasd-controls>
           <a-cursor></a-cursor>
         </a-camera>
+      </a-entity>
+
+      <!-- VR controllers (visible only in VR) -->
+      <a-entity id="left-hand"  laser-controls="hand: left"  raycaster="objects: [data-raycastable]; far: 10"></a-entity>
+      <a-entity id="right-hand" laser-controls="hand: right" raycaster="objects: [data-raycastable]; far: 10"></a-entity>
+
+      <!-- VR chat panel — floating text in VR space -->
+      <a-entity id="vr-chat-panel" visible="false" position="0 1.5 -2">
+        <a-plane width="1.4" height="0.9" color="#0a0a1e" opacity="0.9" shader="flat"></a-plane>
+        <a-text id="vr-chat-text" value="🎮 VR Chat\nPress ~ to type…" color="#a5b4fc" width="2.4" position="-0.65 0.35 0.01" wrap-count="36" font="roboto"></a-text>
       </a-entity>
     </a-scene>
 

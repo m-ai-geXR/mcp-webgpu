@@ -51,6 +51,14 @@ const COMMAND_REFERENCE = `
 When the user asks you to change the scene, respond with a JSON block containing an array of commands.
 Wrap the JSON in a \`\`\`json fenced code block so it can be parsed.
 
+## CRITICAL — Incremental Updates Only
+- The scene is PERSISTENT. Objects you created in previous turns still exist.
+- ONLY create, modify, or delete what the user explicitly asks for.
+- Do NOT recreate objects that already exist.
+- To modify an existing object, use "updateObject" with its id — do NOT delete + recreate it.
+- NEVER use "clearScene" unless the user explicitly asks to "clear", "reset", or "start over".
+- The current scene state (object ids, positions, materials, lights) is provided below the conversation so you know what already exists. Reference existing object ids when updating.
+
 Available commands:
 - {"action":"createObject", "type":"box|sphere|cylinder|cone|torus|plane|capsule", "position":{"x":0,"y":0,"z":0}, "scale":{"x":1,"y":1,"z":1}, "rotation":{"x":0,"y":0,"z":0}, "material":{"color":"#ff0000","metalness":0.3,"roughness":0.7}}
 - {"action":"updateObject", "id":"<id>", "position":{...}, "scale":{...}, "rotation":{...}, "material":{...}, "visible":true}
@@ -61,19 +69,19 @@ Available commands:
 - {"action":"setCamera", "position":{"x":0,"y":5,"z":10}, "target":{"x":0,"y":0,"z":0}, "fov":60}
 - {"action":"setEnvironment", "background":"#1a1a2e", "fog":{"color":"#000","near":10,"far":50}}
 - {"action":"animateObject", "id":"<id>", "property":"position|rotation|scale", "to":{"x":0,"y":2,"z":0}, "duration":1, "loop":false}
-- {"action":"clearScene"}
+- {"action":"clearScene"}  ← ONLY when user explicitly asks to clear/reset!
 
 You may include multiple commands in one response. Always put them in a JSON array.
 Also include a short natural-language explanation outside the code block so the user knows what you did.
 
-Example response:
-I'll create a red cube and a blue sphere for you.
+Example — ADDING to an existing scene (correct):
+The user already has a red cube. They say "add a blue sphere next to it."
 \`\`\`json
 [
-  {"action":"createObject","type":"box","position":{"x":-1,"y":0.5,"z":0},"material":{"color":"#ff0000"}},
-  {"action":"createObject","type":"sphere","position":{"x":1,"y":0.5,"z":0},"material":{"color":"#0066ff"}}
+  {"action":"createObject","type":"sphere","position":{"x":2,"y":0.5,"z":0},"material":{"color":"#0066ff"}}
 ]
 \`\`\`
+Note: we only create the NEW sphere. The existing red cube is untouched.
 
 If the user just asks a question (not a scene change), reply normally without commands.
 Keep explanations concise.`;
@@ -213,6 +221,10 @@ export class ChatRelay {
   private systemPrompts: Record<string, string> = { ...FRAMEWORK_SYSTEM_PROMPTS };
   private stateManager!: SceneStateManager;
 
+  /** Conversation history for multi-turn context. Capped to avoid token overflow. */
+  private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  private static readonly MAX_HISTORY_TURNS = 20;
+
   constructor(queue: MessageQueue, wsServer: WSServer, config: ChatConfig) {
     this.queue = queue;
     this.wsServer = wsServer;
@@ -279,6 +291,7 @@ export class ChatRelay {
   switchProvider(provider: Provider, model?: string): void {
     this.activeProvider = provider;
     this.activeModel = model ?? this.resolveModel(provider);
+    this.conversationHistory = []; // fresh start on provider switch
     console.error(`[ChatRelay] Switched to ${provider} / ${this.activeModel}`);
   }
 
@@ -311,6 +324,61 @@ export class ChatRelay {
 
   getActiveModel(): string {
     return this.activeModel;
+  }
+
+  /** Build a concise summary of the current scene state for the AI context. */
+  private buildSceneContext(): string {
+    if (!this.stateManager) return '';
+    const state = this.stateManager.getState();
+    const parts: string[] = ['## Current Scene State'];
+
+    const objKeys = Object.keys(state.objects);
+    if (objKeys.length === 0) {
+      parts.push('Objects: (none)');
+    } else {
+      parts.push(`Objects (${objKeys.length}):`);
+      for (const obj of Object.values(state.objects)) {
+        const pos = obj.position;
+        const mat = obj.material;
+        const color = mat?.color ?? 'default';
+        parts.push(`  - id="${obj.id}" type=${obj.type} pos=(${pos.x},${pos.y},${pos.z}) color=${color}`);
+      }
+    }
+
+    const lightKeys = Object.keys(state.lights);
+    if (lightKeys.length > 0) {
+      parts.push(`Lights (${lightKeys.length}):`);
+      for (const light of Object.values(state.lights)) {
+        parts.push(`  - id="${light.id}" type=${light.lightType} color=${light.color} intensity=${light.intensity}`);
+      }
+    }
+
+    if (state.environment) {
+      parts.push(`Environment: background=${state.environment.background ?? 'default'}`);
+    }
+
+    return parts.join('\n');
+  }
+
+  /** Get the full system prompt including scene state context. */
+  private getFullSystemPrompt(framework?: Framework): string {
+    const base = this.getSystemPrompt(framework);
+    const sceneCtx = this.buildSceneContext();
+    return sceneCtx ? `${base}\n\n${sceneCtx}` : base;
+  }
+
+  /** Build the messages array with conversation history for AI calls. */
+  private buildMessages(userMessage: string, framework?: Framework): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+    const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
+      { role: 'system', content: this.getFullSystemPrompt(framework) },
+    ];
+    // Append conversation history (already capped)
+    for (const entry of this.conversationHistory) {
+      messages.push(entry);
+    }
+    // Append the current user message
+    messages.push({ role: 'user', content: userMessage });
+    return messages;
   }
 
   /** Add a user-sent in-world message to the queue. */
@@ -362,6 +430,15 @@ export class ChatRelay {
       const rawReply = await this.callAI(msg.message, msg.framework);
       this.queue.shift();
 
+      // Record conversation history for multi-turn context
+      this.conversationHistory.push({ role: 'user', content: msg.message });
+      this.conversationHistory.push({ role: 'assistant', content: rawReply });
+      // Cap history to avoid token overflow (keep last N turns = 2*N entries)
+      const maxEntries = ChatRelay.MAX_HISTORY_TURNS * 2;
+      if (this.conversationHistory.length > maxEntries) {
+        this.conversationHistory = this.conversationHistory.slice(-maxEntries);
+      }
+
       // Parse and execute any scene commands from the AI response
       const { text, commands } = this.parseAIResponse(rawReply);
       if (commands.length > 0) {
@@ -406,10 +483,7 @@ export class ChatRelay {
     const client = new OpenAI({ apiKey: this.config.openaiKey });
     const resp = await client.chat.completions.create({
       model: this.activeModel,
-      messages: [
-        { role: 'system', content: this.getSystemPrompt(framework) },
-        { role: 'user', content: userMessage },
-      ],
+      messages: this.buildMessages(userMessage, framework),
       max_tokens: 8192,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
@@ -418,11 +492,15 @@ export class ChatRelay {
   private async callAnthropic(userMessage: string, framework?: Framework): Promise<string> {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: this.config.anthropicKey });
+    const msgs = this.buildMessages(userMessage, framework);
+    // Anthropic uses a separate 'system' field; strip it from messages
+    const systemContent = msgs[0].content;
+    const chatMessages = msgs.slice(1).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
     const msg = await client.messages.create({
       model: this.activeModel,
       max_tokens: 8192,
-      system: this.getSystemPrompt(framework),
-      messages: [{ role: 'user', content: userMessage }],
+      system: systemContent,
+      messages: chatMessages,
     });
     const block = msg.content[0];
     return block && block.type === 'text'
@@ -436,10 +514,7 @@ export class ChatRelay {
     const client = new OpenAI({ apiKey, baseURL });
     const resp = await client.chat.completions.create({
       model,
-      messages: [
-        { role: 'system', content: this.getSystemPrompt(framework) },
-        { role: 'user', content: userMessage },
-      ],
+      messages: this.buildMessages(userMessage, framework),
       max_tokens: 8192,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
@@ -447,13 +522,20 @@ export class ChatRelay {
 
   /** Google Gemini via the REST-based generateContent API (no extra SDK needed). */
   private async callGoogle(userMessage: string, framework?: Framework): Promise<string> {
+    const msgs = this.buildMessages(userMessage, framework);
+    const systemContent = msgs[0].content;
+    // Build Gemini-style contents array from conversation history
+    const contents = msgs.slice(1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.activeModel}:generateContent?key=${this.config.googleKey}`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: this.getSystemPrompt(framework) }] },
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        system_instruction: { parts: [{ text: systemContent }] },
+        contents,
         generationConfig: { maxOutputTokens: 8192 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -479,10 +561,7 @@ export class ChatRelay {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: this.activeModel,
-        messages: [
-          { role: 'system', content: this.getSystemPrompt(framework) },
-          { role: 'user', content: userMessage },
-        ],
+        messages: this.buildMessages(userMessage, framework),
         stream: false,
       }),
     });

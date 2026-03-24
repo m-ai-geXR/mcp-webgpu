@@ -28,6 +28,8 @@ import {
   CircleEase,
   CubicEase,
   EasingFunction,
+  WebXRDefaultExperience,
+  DynamicTexture,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
@@ -71,6 +73,13 @@ export class BabylonSceneManager {
   private shadowGen:     ShadowGenerator | null = null;
   private tweens       = new Map<string, ActiveTween>();
 
+  // ── WebXR VR ─────────────────────────────────────────────────────────────
+  private xrExperience: WebXRDefaultExperience | null = null;
+  private vrChatMesh:   ReturnType<typeof MeshBuilder.CreatePlane> | null = null;
+  private vrChatTexture: DynamicTexture | null = null;
+  private vrChatMessages: Array<{ role: 'user' | 'ai'; text: string }> = [];
+  isPresenting = false;
+
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true });
     this.scene  = new Scene(this.engine);
@@ -106,6 +115,101 @@ export class BabylonSceneManager {
       this.advanceTweens();
       this.scene.render();
     });
+
+    // ── WebXR VR setup ──────────────────────────────────────────────────────
+    this.initXR();
+  }
+
+  private async initXR(): Promise<void> {
+    try {
+      const xr = await this.scene.createDefaultXRExperienceAsync({
+        floorMeshes: [this.scene.getMeshByName('__grid')!],
+        uiOptions: { sessionMode: 'immersive-vr' },
+        optionalFeatures: true,
+      });
+      this.xrExperience = xr;
+
+      // VR chat panel — dynamic texture on a plane
+      this.vrChatMesh = MeshBuilder.CreatePlane('__vr-chat', { width: 1.4, height: 0.9 }, this.scene);
+      this.vrChatMesh.position = new Vector3(0, 1.5, -2);
+      this.vrChatMesh.isPickable = false;
+      this.vrChatMesh.setEnabled(false);
+
+      this.vrChatTexture = new DynamicTexture('__vr-chat-tex', { width: 700, height: 450 }, this.scene, false);
+      const mat = new StandardMaterial('__vr-chat-mat', this.scene);
+      mat.diffuseTexture = this.vrChatTexture;
+      mat.emissiveTexture = this.vrChatTexture;
+      mat.backFaceCulling = false;
+      mat.disableLighting = true;
+      this.vrChatMesh.material = mat;
+      this.redrawVRChat();
+
+      // Track session state
+      xr.baseExperience.sessionManager.onXRSessionInit.add(() => {
+        this.isPresenting = true;
+        this.vrChatMesh?.setEnabled(true);
+        // Hide DOM overlays
+        document.querySelectorAll('#chat-panel, #status, #debug-panel').forEach((el) => {
+          (el as HTMLElement).style.display = 'none';
+        });
+      });
+
+      xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
+        this.isPresenting = false;
+        this.vrChatMesh?.setEnabled(false);
+        const chatPanel = document.getElementById('chat-panel');
+        if (chatPanel) chatPanel.style.display = '';
+        const status = document.getElementById('status');
+        if (status) status.style.display = '';
+      });
+    } catch (e) {
+      console.warn('[Babylon XR] WebXR not available:', e);
+    }
+  }
+
+  addVRChatMessage(role: 'user' | 'ai', text: string): void {
+    this.vrChatMessages.push({ role, text });
+    if (this.vrChatMessages.length > 8) this.vrChatMessages = this.vrChatMessages.slice(-8);
+    this.redrawVRChat();
+  }
+
+  private redrawVRChat(): void {
+    if (!this.vrChatTexture) return;
+    const ctx = this.vrChatTexture.getContext();
+    const w = 700, h = 450;
+
+    // Background
+    ctx.fillStyle = 'rgba(10, 10, 30, 0.95)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Border
+    ctx.strokeStyle = 'rgba(100, 100, 220, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, w - 4, h - 4);
+
+    // Title
+    ctx.fillStyle = '#a5b4fc';
+    ctx.font = 'bold 20px Segoe UI, system-ui, sans-serif';
+    ctx.fillText('🎮 VR Chat', 16, 30);
+
+    // Messages
+    ctx.font = '16px Segoe UI, system-ui, sans-serif';
+    let y = 56;
+    for (const msg of this.vrChatMessages) {
+      if (y > h - 20) break;
+      ctx.fillStyle = msg.role === 'user' ? '#c7d2fe' : '#86efac';
+      const prefix = msg.role === 'user' ? '🗣  ' : '🤖 ';
+      ctx.fillText(prefix + msg.text.slice(0, 60), 16, y);
+      y += 24;
+    }
+
+    if (this.vrChatMessages.length === 0) {
+      ctx.fillStyle = '#6b7280';
+      ctx.font = 'italic 16px Segoe UI, system-ui, sans-serif';
+      ctx.fillText('Press ~ to type a message…', 16, y);
+    }
+
+    this.vrChatTexture.update();
   }
 
   private advanceTweens(): void {
