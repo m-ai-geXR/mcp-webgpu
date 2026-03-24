@@ -4,20 +4,20 @@
   "private": true,
   "description": "Multi-framework 3D MCP server — Three.js, A-Frame, Babylon.js, R3F with in-world async chat",
   "scripts": {
-    "dev:server":   "pnpm --filter @maige-3d/server dev",
+    "dev:server":   "pnpm --filter maige-3d-mcp dev",
     "dev:threejs":  "pnpm --filter @maige-3d/client-threejs dev",
     "dev:aframe":   "pnpm --filter @maige-3d/client-aframe dev",
     "dev:babylon":  "pnpm --filter @maige-3d/client-babylonjs dev",
     "dev:r3f":      "pnpm --filter @maige-3d/client-r3f dev",
     "dev": "concurrently -n server,threejs,aframe,babylon,r3f -c blue,green,yellow,magenta,cyan \"pnpm dev:server\" \"pnpm dev:threejs\" \"pnpm dev:aframe\" \"pnpm dev:babylon\" \"pnpm dev:r3f\"",
-    "build:server":  "pnpm --filter @maige-3d/server build",
+    "build:server":  "pnpm --filter maige-3d-mcp build",
     "build:threejs": "pnpm --filter @maige-3d/client-threejs build",
     "build:aframe":  "pnpm --filter @maige-3d/client-aframe build",
     "build:babylon": "pnpm --filter @maige-3d/client-babylonjs build",
     "build:r3f":     "pnpm --filter @maige-3d/client-r3f build",
     "build": "pnpm build:server && pnpm build:threejs && pnpm build:aframe && pnpm build:babylon && pnpm build:r3f",
     "test":  "pnpm -r test",
-    "start": "pnpm --filter @maige-3d/server start"
+    "start": "pnpm --filter maige-3d-mcp start"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

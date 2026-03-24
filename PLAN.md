@@ -374,7 +374,7 @@ differences:
 
 ### Phase 5 — DX + Docs  ✦ Week 6
 
-- [ ] `npx maige-3d-mcp` one-liner launch
+- [x] `npx maige-3d-mcp` one-liner launch
 - [x] Auto-open browser on server start (Vite `open: true`)
 - [x] VS Code extension config snippet for Copilot agent mode (`.vscode/mcp.json`)
 - [x] README with architecture docs, provider table, tool reference

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Load .env FIRST — before any other imports that might read env vars.
 import { config } from 'dotenv';
 import { existsSync } from 'node:fs';

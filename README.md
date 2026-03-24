@@ -22,14 +22,24 @@
 
 ## Quick start
 
-### 1. Install
+### Option A — npx (no clone needed)
+
+```bash
+npx maige-3d-mcp
+```
+
+This starts the MCP server via stdio. Point your MCP client (VS Code Copilot, Claude Desktop, Cursor) at the command `npx maige-3d-mcp`.
+
+### Option B — from source
+
+#### 1. Install
 
 ```bash
 cd mcp-webgpu
 pnpm install
 ```
 
-### 2. Configure
+#### 2. Configure
 
 ```bash
 cp .env.example .env
@@ -59,7 +69,7 @@ Each provider also has a `*_MODEL` env var (e.g. `OPENAI_MODEL=gpt-4.1`) — see
 > - **Relay mode** (no key needed): the MCP host AI (Copilot, Claude Desktop) handles in-world chat by polling `getPendingUserMessages`.
 > - **Direct mode** (key in `.env`): the server answers chat autonomously using the configured provider.
 
-### 3. Build & run
+#### 3. Build & run
 
 ```bash
 pnpm build:server   # compile TypeScript once
@@ -75,7 +85,7 @@ Clients open at:
 | Babylon.js | http://localhost:5175 |
 | React Three Fiber | http://localhost:5176 |
 
-### 4. Register with VS Code Copilot
+#### 4. Register with VS Code Copilot
 
 The `.vscode/mcp.json` is pre-configured. Reload VS Code and `maige-3d-mcp` appears in Copilot agent mode.
 

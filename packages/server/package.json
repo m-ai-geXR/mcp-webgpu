@@ -1,7 +1,13 @@
 {
-  "name": "@maige-3d/server",
+  "name": "maige-3d-mcp",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "maige-3d-mcp": "./build/main.js"
+  },
+  "files": [
+    "build/"
+  ],
   "scripts": {
     "dev":        "tsc && node build/main.js",
     "build":      "tsc",
