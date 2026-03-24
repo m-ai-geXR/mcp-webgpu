@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>maige-3d — A-Frame</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: #0d0d1a;
+        overflow: hidden;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: #e0e0ff;
+      }
+
+      /* ── Status badge ─────────────────────────────────────────── */
+      #status {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid #333;
+        pointer-events: none;
+        z-index: 10;
+        transition: color 0.3s;
+      }
+      #status.connected    { color: #4ade80; border-color: #4ade80; }
+      #status.disconnected { color: #f87171; border-color: #f87171; }
+      #status.connecting   { color: #facc15; border-color: #facc15; }
+
+      /* ── Chat overlay ─────────────────────────────────────────── */
+      #chat-panel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 340px;
+        max-height: 480px;
+        display: flex;
+        flex-direction: column;
+        background: rgba(10, 10, 28, 0.85);
+        border: 1px solid rgba(100, 100, 220, 0.4);
+        border-radius: 12px;
+        backdrop-filter: blur(16px);
+        z-index: 100;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 80, 0.5);
+        transition: height 0.2s ease, opacity 0.2s ease;
+      }
+      #chat-panel.collapsed { height: 44px; overflow: hidden; }
+
+      #chat-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        cursor: pointer;
+        user-select: none;
+        border-bottom: 1px solid rgba(100,100,220,0.2);
+        flex-shrink: 0;
+      }
+      #chat-header .dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #818cf8;
+        flex-shrink: 0;
+      }
+      #chat-header span { font-size: 12px; font-weight: 600; color: #a5b4fc; flex: 1; }
+      #chat-header .toggle-icon { font-size: 14px; color: #6366f1; transition: transform 0.2s; }
+      #chat-panel:not(.collapsed) #chat-header .toggle-icon { transform: rotate(180deg); }
+
+      #chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        scrollbar-width: thin;
+        scrollbar-color: #3730a3 transparent;
+      }
+
+      .chat-msg {
+        padding: 7px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        max-width: 100%;
+        word-break: break-word;
+        animation: msgIn 0.15s ease;
+      }
+      @keyframes msgIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .chat-msg.user {
+        background: rgba(79, 70, 229, 0.3);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        align-self: flex-end;
+        color: #c7d2fe;
+      }
+      .chat-msg.ai {
+        background: rgba(30, 30, 60, 0.7);
+        border: 1px solid rgba(60, 60, 120, 0.4);
+        align-self: flex-start;
+        color: #e2e8f0;
+      }
+      .chat-msg.ai.thinking { color: #6b7280; font-style: italic; }
+
+      #chat-input-row {
+        display: flex;
+        gap: 6px;
+        padding: 10px 14px;
+        border-top: 1px solid rgba(100,100,220,0.2);
+        flex-shrink: 0;
+      }
+      #chat-input {
+        flex: 1;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        color: #e0e0ff;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      #chat-input:focus { border-color: #6366f1; }
+      #chat-input::placeholder { color: #4b5563; }
+      #chat-send {
+        background: #4f46e5;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 12px;
+        color: white;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      }
+      #chat-send:hover { background: #6366f1; }
+      #chat-send:disabled { background: #374151; cursor: not-allowed; }
+
+      .model-selector {
+        display: flex;
+        gap: 6px;
+        padding: 6px 14px;
+        border-bottom: 1px solid rgba(100,100,220,0.15);
+        flex-shrink: 0;
+      }
+
+      .model-selector select {
+        flex: 1;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 11px;
+        color: #c7d2fe;
+        outline: none;
+        cursor: pointer;
+        min-width: 0;
+      }
+
+      .model-selector select:focus { border-color: #6366f1; }
+
+      .model-selector select option {
+        background: #1e1e3c;
+        color: #e0e0ff;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- A-Frame scene -->
+    <a-scene
+      id="aframe-scene"
+      background="color: #1a1a2e"
+      fog="type: linear; color: #1a1a2e; near: 50; far: 200"
+      shadow="type: pcfsoft"
+    >
+      <!-- Assets -->
+      <a-assets id="scene-assets"></a-assets>
+
+      <!-- Default lighting (will be replaced by server commands) -->
+      <a-entity id="light-ambient"  light="type: ambient;     color: #ffffff; intensity: 0.4"></a-entity>
+      <a-entity id="light-dir"      light="type: directional; color: #ffffff; intensity: 0.8; castShadow: true"
+                position="5 10 5"></a-entity>
+
+      <!-- Grid plane -->
+      <a-grid width="30" height="30" color="#222240" position="0 -0.001 0"></a-grid>
+
+      <!-- Camera rig with look-controls -->
+      <a-entity id="camera-rig" position="6 5 6">
+        <a-camera id="main-camera" look-controls wasd-controls>
+          <a-cursor></a-cursor>
+        </a-camera>
+      </a-entity>
+    </a-scene>
+
+    <div id="status" class="connecting">● Connecting…</div>
+
+    <!-- In-world Chat Overlay -->
+    <div id="chat-panel" class="collapsed">
+      <div id="chat-header">
+        <div class="dot"></div>
+        <span>AI Chat</span>
+        <span class="toggle-icon">▲</span>
+      </div>
+      <div id="model-selector-row" class="model-selector" style="display:none">
+        <select id="provider-select"></select>
+        <select id="model-select"></select>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Ask the AI anything…" autocomplete="off" />
+        <button id="chat-send">Send</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

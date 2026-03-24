@@ -1,0 +1,22 @@
+{
+  "name": "@maige-3d/client-aframe",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev":        "vite",
+    "build":      "vite build",
+    "preview":    "vite preview",
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "aframe": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/aframe": "^1.2.9",
+    "jsdom":         "^25.0.0",
+    "typescript":    "^5.5.0",
+    "vite":          "^5.4.0",
+    "vitest":        "^2.1.0"
+  }
+}
