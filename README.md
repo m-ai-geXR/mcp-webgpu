@@ -10,7 +10,7 @@
 
 - **4 production-ready 3D clients** — Three.js, A-Frame (1.7.0 + bloom), Babylon.js (PBR), React Three Fiber + Zustand — all visually aligned
 - **WebXR / VR support** — enter immersive VR in all four clients; floating chat panel follows your gaze so you can talk to the AI from inside the headset
-- **9 AI providers** out of the box — OpenAI (GPT-4.1), Anthropic (Claude Sonnet 4), Google Gemini 2.5 Pro, Mistral, Groq (Llama 3.3 70B), xAI Grok-3, Cohere Command R+, Together.ai, and local Ollama
+- **9 AI providers** out of the box — OpenAI (GPT-5.2), Anthropic (Claude Sonnet 4.6), Google Gemini 3.1 Pro, Mistral, Groq (Llama 3.3 70B), xAI Grok-4, Cohere Command R+, Together.ai, and local Ollama
 - **23 MCP tools** — objects, lights, cameras, animation, environment, scene I/O, undo/redo, screenshots, and in-world chat
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in *that* engine (adapted from the iOS maigeXR app)
 - **In-world chat** — press **`~`** to talk to the AI without leaving the 3D viewport; it reads your messages and answers in a floating overlay
@@ -115,14 +115,14 @@ Alternatively, add to your global VS Code settings:
 
 | Provider | Default Model | Available Models | Notes |
 |---|---|---|---|
-| **OpenAI** | `gpt-4.1` | gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, o3, o3-mini, o4-mini | Best general-purpose option |
-| **Anthropic** | `claude-sonnet-4-6` | claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5 | Strong reasoning |
-| **Google Gemini** | `gemini-2.5-pro` | gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite, gemini-2.0-flash | Large context, multimodal |
+| **OpenAI** | `gpt-5.2` | gpt-5.2, gpt-5.2-pro, gpt-4.1, gpt-4.1-mini, gpt-4o, o3, o4-mini | Best general-purpose option |
+| **Anthropic** | `claude-sonnet-4-6` | claude-opus-4-6, claude-sonnet-4-6, claude-sonnet-4-5, claude-haiku-4-5 | Strong reasoning |
+| **Google Gemini** | `gemini-3.1-pro-preview` | gemini-3.1-pro-preview, gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite | Latest flagship, multimodal |
 | **Mistral** | `mistral-large-latest` | mistral-large, mistral-medium, mistral-small, open-mistral-nemo | Fast + capable |
 | **Groq** | `llama-3.3-70b-versatile` | llama-3.3-70b, deepseek-r1-distill-llama-70b, llama-3.1-8b-instant, mixtral-8x7b | Blazing inference speed |
-| **xAI / Grok** | `grok-3` | grok-3, grok-3-mini, grok-3-fast, grok-2 | Creative scenes |
+| **xAI / Grok** | `grok-4-0709` | grok-4-0709, grok-4-fast-reasoning, grok-3, grok-3-mini, grok-code-fast-1 | Latest Grok 4 |
 | **Cohere** | `command-r-plus` | command-r-plus, command-r, command, command-light | Tool-use focused |
-| **Together.ai** | `Llama-3.3-70B-Instruct-Turbo` | Llama-3.3-70B, Llama-3.1-405B, DeepSeek-R1, Qwen2.5-72B | Open-source, fast |
+| **Together.ai** | `DeepSeek-R1-Distill-Llama-70B-free` | DeepSeek-R1-Distill-70B-free, Llama-3.3-70B-free, Llama-3.3-70B, DeepSeek-R1, Qwen2.5-72B | Free tier available |
 | **Ollama** | `llama3.2` | llama3.2, mistral, phi4, gemma3, qwen2.5, deepseek-r1 | Fully local, no API key |
 
 Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROVIDER` in `.env`. Override the model per-provider with `*_MODEL` env vars (see `.env.example`).
