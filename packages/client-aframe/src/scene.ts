@@ -21,13 +21,59 @@ function vec3ToStr(v: Vec3 | string): string {
 function toRad(deg: number) { return (deg * Math.PI) / 180; }
 void toRad; // unused in A-Frame (uses degrees directly)
 
+function applyEasing(t: number, mode: string): number {
+  switch (mode) {
+    case 'easeIn':    return t * t * t;
+    case 'easeOut':   return 1 - Math.pow(1 - t, 3);
+    case 'easeInOut': return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    default:          return t; // linear
+  }
+}
+
+interface AFrameTween {
+  el: HTMLElement;
+  property: 'position' | 'rotation' | 'scale';
+  fromX: number; fromY: number; fromZ: number;
+  toX: number;   toY: number;   toZ: number;
+  startMs: number;
+  durationMs: number;
+  easing: string;
+  loop: boolean;
+}
+
 export class AFrameSceneManager {
   private objects = new Map<string, HTMLElement>();
   private lights  = new Map<string, HTMLElement>();
+  private tweens  = new Map<string, AFrameTween>();
   private scene: Element;
+  private animFrameId = 0;
 
   constructor() {
     this.scene = document.querySelector('a-scene')!;
+    this.startAnimLoop();
+  }
+
+  /** Manual tween loop — runs every frame and drives active animations. */
+  private startAnimLoop(): void {
+    const tick = () => {
+      this.animFrameId = requestAnimationFrame(tick);
+      const now = performance.now();
+      for (const [id, tw] of this.tweens) {
+        let t = Math.min((now - tw.startMs) / tw.durationMs, 1);
+        if (tw.loop && t >= 1) { tw.startMs = now; t = 0; }
+
+        const e = applyEasing(t, tw.easing);
+        const lerp = (a: number, b: number) => a + (b - a) * e;
+        const x = lerp(tw.fromX, tw.toX);
+        const y = lerp(tw.fromY, tw.toY);
+        const z = lerp(tw.fromZ, tw.toZ);
+
+        tw.el.setAttribute(tw.property, `${x} ${y} ${z}`);
+
+        if (t >= 1 && !tw.loop) this.tweens.delete(id);
+      }
+    };
+    this.animFrameId = requestAnimationFrame(tick);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -216,27 +262,35 @@ export class AFrameSceneManager {
     loop: boolean,
   ): void {
     const el = this.objects.get(id);
-    if (!el) return;
-    // A-Frame animation component — use component properties (not object3D path)
-    // so vec3 interpolation and degree-based rotation work correctly.
-    const toStr = vec3ToStr(to);
-    const easingMap: Record<string, string> = {
-      linear: 'linear',
-      easeIn: 'easeInQuad',
-      easeOut: 'easeOutQuad',
-      easeInOut: 'easeInOutQuad',
-    };
-    const aframeEasing = easingMap[easing] ?? 'linear';
-    el.setAttribute('animation', [
-      `property: ${property}`,
-      `to: ${toStr}`,
-      `dur: ${Math.round(duration * 1000)}`,
-      `easing: ${aframeEasing}`,
-      `loop: ${loop}`,
-    ].join('; '));
+    if (!el) { console.warn(`[AFrame] animateObject: entity "${id}" not found`); return; }
+
+    // Read the current value from the entity's Three.js object3D
+    const obj = (el as HTMLElement & { object3D?: { position: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number }; scale: { x: number; y: number; z: number } } }).object3D;
+    const from = obj
+      ? { x: obj[property].x, y: obj[property].y, z: obj[property].z }
+      : { x: 0, y: 0, z: 0 };
+
+    // For rotation, A-Frame stores degrees in attributes but radians in object3D.
+    // We receive degrees from the server, so convert from to degrees.
+    const fromDeg = property === 'rotation' && obj
+      ? { x: from.x * 180 / Math.PI, y: from.y * 180 / Math.PI, z: from.z * 180 / Math.PI }
+      : from;
+
+    // Store as a manual tween for the render tick
+    this.tweens.set(id, {
+      el,
+      property,
+      fromX: fromDeg.x, fromY: fromDeg.y, fromZ: fromDeg.z,
+      toX: to.x, toY: to.y, toZ: to.z,
+      startMs: performance.now(),
+      durationMs: duration * 1000,
+      easing,
+      loop,
+    });
   }
 
   stopAnimation(id: string): void {
+    this.tweens.delete(id);
     const el = this.objects.get(id);
     if (!el) return;
     el.removeAttribute('animation');
@@ -259,6 +313,7 @@ export class AFrameSceneManager {
   loadScene(state: SceneState): void {
     for (const id of [...this.objects.keys()]) this.deleteObject(id);
     for (const id of [...this.lights.keys()])  this.deleteLight(id);
+    this.tweens.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);
