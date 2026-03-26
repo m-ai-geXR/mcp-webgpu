@@ -132,6 +132,8 @@ export async function handleTool(
     if (!obj) return err(`Object "${id}" not found`);
     // Update server state to target immediately
     sm.updateObject(id, { [property]: to });
+    // Persist animation definition so it survives page reloads
+    sm.addAnimation({ id, property, to, duration, easing, loop });
     ws.sendCommand({
       action: 'animateObject',
       commandId: uuidv4(),
@@ -147,6 +149,7 @@ export async function handleTool(
 
   if (name === 'stopAnimation') {
     const { id } = input as { id: string };
+    sm.removeAnimation(id);
     ws.sendCommand({ action: 'stopAnimation', commandId: uuidv4(), id });
     return ok(`Stopped animation on "${id}"`);
   }

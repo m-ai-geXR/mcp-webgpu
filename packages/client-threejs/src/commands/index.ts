@@ -1,5 +1,5 @@
 import { SceneManager } from '../scene.js';
-import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, Vec3 } from '../types.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, AnimationDef, Vec3 } from '../types.js';
 
 /** Dispatch a raw command (from the server) to the SceneManager. */
 export function dispatch(
@@ -80,9 +80,21 @@ export function dispatch(
       break;
 
     // ── Full scene ───────────────────────────────────────────────
-    case 'loadScene':
-      scene.loadScene((cmd['state'] ?? cmd) as SceneState);
+    case 'loadScene': {
+      const state = (cmd['state'] ?? cmd) as SceneState;
+      scene.loadScene(state);
+      // Replay persisted animations
+      if (state.animations) {
+        for (const anim of Object.values(state.animations)) {
+          scene.animateObject(
+            anim.id, anim.property as 'position' | 'rotation' | 'scale',
+            anim.to, anim.duration, (anim.easing as 'linear' | 'easeIn' | 'easeOut' | 'easeInOut') ?? 'linear',
+            anim.loop, currentTime,
+          );
+        }
+      }
       break;
+    }
 
     // ── Screenshot ───────────────────────────────────────────────
     case 'takeScreenshot': {

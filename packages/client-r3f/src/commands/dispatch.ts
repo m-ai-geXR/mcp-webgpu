@@ -5,7 +5,7 @@
  * message-level `type: 'command'` field, so we map it back here.
  */
 import { useSceneStore } from '../store/sceneStore.js';
-import { ActiveAnimation, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
+import { ActiveAnimation, AnimationDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
 
 type Cmd = Record<string, unknown>;
 
@@ -83,9 +83,31 @@ export function dispatch(cmd: Cmd): string | null {
       break;
 
     // ── Full scene ────────────────────────────────────────────────────────────
-    case 'loadScene':
-      store.loadScene(((cmd.state ?? cmd) as unknown) as SceneState);
+    case 'loadScene': {
+      const state = ((cmd.state ?? cmd) as unknown) as SceneState;
+      store.loadScene(state);
+      // Replay persisted animations
+      if (state.animations) {
+        const freshStore = useSceneStore.getState();
+        for (const anim of Object.values(state.animations) as AnimationDef[]) {
+          const obj = freshStore.objects[anim.id];
+          if (!obj) continue;
+          const from = obj[anim.property as 'position' | 'rotation' | 'scale'] ?? { x: 0, y: 0, z: 0 };
+          const active: ActiveAnimation = {
+            id: anim.id,
+            property: anim.property as 'position' | 'rotation' | 'scale',
+            fromX: (from as { x: number }).x, fromY: (from as { y: number }).y, fromZ: (from as { z: number }).z,
+            toX: anim.to.x, toY: anim.to.y, toZ: anim.to.z,
+            startTime: performance.now(),
+            duration: (anim.duration ?? 1) * 1000,
+            easing: (anim.easing as ActiveAnimation['easing']) ?? 'linear',
+            loop: anim.loop ?? false,
+          };
+          freshStore.startAnimation(active);
+        }
+      }
       break;
+    }
 
     // ── Clear scene ───────────────────────────────────────────────────────────
     case 'clearScene':

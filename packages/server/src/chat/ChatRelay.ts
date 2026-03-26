@@ -1,4 +1,4 @@
-import { PendingMessage } from '../types.js';
+import { PendingMessage, Vec3 } from '../types.js';
 import { MessageQueue } from './MessageQueue.js';
 import type { WSServer } from '../ws/WSServer.js';
 import type { SceneStateManager } from '../state/SceneStateManager.js';
@@ -480,6 +480,15 @@ export class ChatRelay {
           case 'animateObject': {
             const id = cmd['id'] as string;
             if (sm.getObject(id)) {
+              // Persist animation so it survives page reloads
+              sm.addAnimation({
+                id,
+                property: cmd['property'] as 'position' | 'rotation' | 'scale',
+                to: cmd['to'] as Vec3,
+                duration: (cmd['duration'] as number) ?? 1,
+                easing: (cmd['easing'] as string) ?? 'linear',
+                loop: (cmd['loop'] as boolean) ?? false,
+              });
               ws.sendCommand({ action: 'animateObject', commandId: uuidv4(), ...cmd });
             }
             break;

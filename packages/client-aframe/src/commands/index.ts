@@ -16,23 +16,7 @@ export function dispatch(
   const action = cmd['action'] as string | undefined;
   if (!action) return;
 
-  try {
-    _dispatch(cmd, action, scene, sendScreenshot);
-  } catch (err) {
-    console.error(`[AFrameClient] Error executing action '${action}':`, err);
-  }
-}
-
-function _dispatch(
-  cmd: Record<string, unknown>,
-  action: string,
-  scene: AFrameSceneManager,
-  sendScreenshot: (requestId: string, dataUrl: string) => void,
-): void {
   switch (action) {
-    case 'clearScene':
-      scene.loadScene({ objects: {}, lights: {} } as SceneState);
-      break;
     case 'createObject': {
       const createDef = { ...cmd };
       if (createDef['objectType']) createDef['type'] = createDef['objectType'];
@@ -88,9 +72,20 @@ function _dispatch(
       scene.setEnvironment(cmd as unknown as EnvironmentDef);
       break;
 
-    case 'loadScene':
-      scene.loadScene((cmd['state'] ?? cmd) as SceneState);
+    case 'loadScene': {
+      const state = (cmd['state'] ?? cmd) as SceneState;
+      scene.loadScene(state);
+      // Replay persisted animations
+      if (state.animations) {
+        for (const anim of Object.values(state.animations)) {
+          scene.animateObject(
+            anim.id, anim.property as 'position' | 'rotation' | 'scale',
+            anim.to, anim.duration, anim.easing ?? 'linear', anim.loop,
+          );
+        }
+      }
       break;
+    }
 
     case 'takeScreenshot': {
       const requestId = cmd['requestId'] as string;

@@ -70,9 +70,20 @@ export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown
       break;
 
     // ── Full scene ───────────────────────────────────────────────────────────
-    case 'loadScene':
-      scene.loadScene((cmd['state'] ?? cmd) as SceneState);
+    case 'loadScene': {
+      const state = (cmd['state'] ?? cmd) as SceneState;
+      scene.loadScene(state);
+      // Replay persisted animations
+      if (state.animations) {
+        for (const anim of Object.values(state.animations)) {
+          scene.animateObject(
+            anim.id, anim.property as 'position' | 'rotation' | 'scale',
+            anim.to, anim.duration, anim.easing ?? 'linear', anim.loop,
+          );
+        }
+      }
       break;
+    }
 
     // ── Screenshot ───────────────────────────────────────────────────────────
     case 'takeScreenshot': {

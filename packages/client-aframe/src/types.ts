@@ -65,4 +65,15 @@ export interface SceneState {
   lights: Record<string, SceneLight>;
   camera: SceneCamera;
   environment: EnvironmentDef;
+  animations?: Record<string, AnimationDef>;
+}
+
+/** Persistent animation definition sent by server in loadScene. */
+export interface AnimationDef {
+  id: string;
+  property: 'position' | 'rotation' | 'scale';
+  to: Vec3;
+  duration: number;  // seconds
+  easing: string;
+  loop: boolean;
 }

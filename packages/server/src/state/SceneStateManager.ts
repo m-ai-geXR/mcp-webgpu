@@ -5,6 +5,7 @@ import {
   SceneLight,
   SceneCamera,
   EnvironmentDef,
+  AnimationDef,
   MaterialDef,
   Vec3,
 } from '../types.js';
@@ -12,6 +13,7 @@ import { UndoStack } from './UndoStack.js';
 
 const DEFAULT_STATE: SceneState = {
   objects: {},
+  animations: {},
   lights: {
     'ambient-default': {
       id: 'ambient-default',
@@ -133,6 +135,7 @@ export class SceneStateManager {
     if (!this.state.objects[id]) return false;
     this.snapshot();
     delete this.state.objects[id];
+    this.removeAnimation(id);
     return true;
   }
 
@@ -225,6 +228,7 @@ export class SceneStateManager {
   clearScene(): void {
     this.snapshot();
     this.state.objects = {};
+    this.state.animations = {};
     this.state.lights = this.clone(DEFAULT_STATE.lights);
   }
 
@@ -245,5 +249,25 @@ export class SceneStateManager {
     if (!next) return false;
     this.state = next;
     return true;
+  }
+
+  // ─── Animations ─────────────────────────────────────────────────────────────
+
+  addAnimation(def: AnimationDef): void {
+    if (!this.state.animations) this.state.animations = {};
+    this.state.animations[`${def.id}_${def.property}`] = def;
+  }
+
+  removeAnimation(objectId: string): void {
+    if (!this.state.animations) return;
+    for (const key of Object.keys(this.state.animations)) {
+      if (key === objectId || key.startsWith(`${objectId}_`)) {
+        delete this.state.animations[key];
+      }
+    }
+  }
+
+  removeObjectAnimations(objectId: string): void {
+    this.removeAnimation(objectId);
   }
 }

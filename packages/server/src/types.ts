@@ -89,8 +89,19 @@ export interface SceneState {
   lights: Record<string, SceneLight>;
   camera: SceneCamera;
   environment: EnvironmentDef;
+  animations?: Record<string, AnimationDef>;
   framework?: Framework;
   timestamp?: number;
+}
+
+/** Persistent animation definition — survives page reloads via loadScene. */
+export interface AnimationDef {
+  id: string;
+  property: 'position' | 'rotation' | 'scale';
+  to: Vec3;
+  duration: number;  // seconds
+  easing: string;
+  loop: boolean;
 }
 
 // ─── WebSocket message protocol ────────────────────────────────────────────────
