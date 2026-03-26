@@ -7,7 +7,9 @@
  */
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, useGLTF } from '@react-three/drei';
+import { OrbitControls, useGLTF } from '@react-three/drei';
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import { createXRStore, XR } from '@react-three/xr';
 import * as THREE from 'three';
 import { useSceneStore } from './store/sceneStore.js';
@@ -322,19 +324,7 @@ export function SceneCanvas({
         {/* Orbit controls */}
         <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
 
-        {/* Grid */}
-        <Grid
-          position={[0, -0.001, 0]}
-          args={[30, 30]}
-          cellSize={1}
-          cellThickness={0.5}
-          cellColor="#2a2a4a"
-          sectionSize={5}
-          sectionThickness={1}
-          sectionColor="#3a3a6a"
-          fadeDistance={50}
-          infiniteGrid
-        />
+        {/* Grid removed — clean background only */}
 
         {/* Lights */}
         {Object.values(lights).map((l) => (
@@ -354,6 +344,17 @@ export function SceneCanvas({
 
         {/* Screenshot capturer */}
         <ScreenshotCapturer onCapture={handleScreenshot} />
+
+        {/* Post-processing effects */}
+        <EffectComposer>
+          <Bloom
+            luminanceThreshold={0.8}
+            luminanceSmoothing={0.3}
+            intensity={0.4}
+            mipmapBlur
+          />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
       </XR>
     </Canvas>
   );

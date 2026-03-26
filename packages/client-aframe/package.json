@@ -10,10 +10,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "aframe": "^1.6.0"
+    "aframe": "^1.6.0",
+    "three": "^0.168.0"
   },
   "devDependencies": {
     "@types/aframe": "^1.2.9",
+    "@types/three": "^0.168.0",
     "jsdom":         "^25.0.0",
     "typescript":    "^5.5.0",
     "vite":          "^5.4.0",

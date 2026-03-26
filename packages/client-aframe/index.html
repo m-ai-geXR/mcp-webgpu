@@ -8,8 +8,8 @@
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
     <!-- A-Frame Extras for additional components -->
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.6.0/dist/aframe-extras.min.js"></script>
-    <!-- A-Frame Effects for post-processing (bloom, etc.) — optional, degrades gracefully -->
-    <script src="https://unpkg.com/aframe-effects@5.0.0/dist/aframe-effects.min.js" onerror="console.warn('aframe-effects not loaded; bloom disabled')"></script>
+    <!-- A-Frame Effects for post-processing (bloom, etc.) -->
+    <script src="https://unpkg.com/aframe-effects@5.0.0/dist/aframe-effects.min.js" onerror="console.warn('aframe-effects not loaded; using fallback bloom')"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -301,8 +301,7 @@
       <a-entity id="light-dir"      light="type: directional; color: #ffffff; intensity: 0.8; castShadow: true"
                 position="5 10 5"></a-entity>
 
-      <!-- Grid plane -->
-      <a-grid width="30" height="30" color="#222240" position="0 -0.001 0"></a-grid>
+      <!-- Grid removed — clean background only -->
 
       <!-- Camera rig with look-controls -->
       <a-entity id="camera-rig" position="6 5 6">

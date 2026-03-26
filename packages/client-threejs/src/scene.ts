@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import {
   SceneObject,
   SceneLight,
@@ -32,6 +37,7 @@ export class SceneManager {
   private lights   = new Map<string, THREE.Light>();
   private animations = new Map<string, ActiveAnimation>();
   private loader   = new THREE.TextureLoader();
+  private composer: EffectComposer;
 
   /** Optional callback invoked every frame (for VR panel updates, etc.). */
   onTick: ((time: number) => void) | null = null;
@@ -51,10 +57,7 @@ export class SceneManager {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#1a1a2e');
 
-    // Grid helper (subtle)
-    const grid = new THREE.GridHelper(30, 30, 0x333355, 0x222240);
-    grid.position.y = -0.001;
-    this.scene.add(grid);
+    // Grid removed — clean background only
 
     // ── Camera ───────────────────────────────────────────────────
     this.camera = new THREE.PerspectiveCamera(
@@ -73,6 +76,25 @@ export class SceneManager {
     this.controls.minDistance = 1;
     this.controls.maxDistance = 200;
 
+    // ── Post-processing ────────────────────────────────────────
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(container.clientWidth, container.clientHeight),
+      0.4,   // strength
+      0.4,   // radius
+      0.85,  // threshold
+    );
+    this.composer.addPass(bloomPass);
+
+    const fxaaPass = new ShaderPass(FXAAShader);
+    fxaaPass.uniforms['resolution'].value.set(
+      1 / (container.clientWidth * window.devicePixelRatio),
+      1 / (container.clientHeight * window.devicePixelRatio),
+    );
+    this.composer.addPass(fxaaPass);
+
     // ── Resize observer ──────────────────────────────────────────
     new ResizeObserver(() => {
       const w = container.clientWidth;
@@ -80,6 +102,11 @@ export class SceneManager {
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(w, h);
+      this.composer.setSize(w, h);
+      fxaaPass.uniforms['resolution'].value.set(
+        1 / (w * window.devicePixelRatio),
+        1 / (h * window.devicePixelRatio),
+      );
     }).observe(container);
 
     // ── Render loop ──────────────────────────────────────────────
@@ -108,7 +135,7 @@ export class SceneManager {
     }
 
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
     this.onTick?.(time);
   }
 

@@ -2,6 +2,10 @@ import { AFrameSceneManager } from './scene.js';
 import { WSClient } from './ws-client.js';
 import { ChatOverlay } from './overlay/ChatOverlay.js';
 import { dispatch } from './commands/index.js';
+import { registerBloomSystem } from './postprocessing.js';
+
+// Register fallback bloom post-processing before the scene loads
+registerBloomSystem();
 
 const params = new URLSearchParams(window.location.search);
 const WS_PORT  = params.get('wsPort')    ?? '8083';

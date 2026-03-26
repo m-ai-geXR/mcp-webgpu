@@ -85,11 +85,11 @@ export class WSClient {
   }
 
   sendScreenshot(requestId: string, dataUrl: string): void {
-    this.send({ type: 'screenshot-response', requestId, dataUrl });
+    this.send({ type: 'screenshot', requestId, dataUrl });
   }
 
   sendStateUpdate(state: unknown): void {
-    this.send({ type: 'state-update', sessionId: this.sessionId, state });
+    this.send({ type: 'state-update', sessionId: this.sessionId, data: state });
   }
 
   sendPing(): void {

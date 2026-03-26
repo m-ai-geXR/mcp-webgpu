@@ -30,6 +30,8 @@ import {
   EasingFunction,
   WebXRDefaultExperience,
   DynamicTexture,
+  DefaultRenderingPipeline,
+  ImageProcessingConfiguration,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
@@ -97,15 +99,27 @@ export class BabylonSceneManager {
     this.camera.lowerRadiusLimit = 1;
     this.camera.upperRadiusLimit = 200;
 
-    // Simple grid ground plane
-    const grid = MeshBuilder.CreateGround('__grid', { width: 30, height: 30, subdivisions: 30 }, this.scene);
-    const gridMat = new StandardMaterial('__gridMat', this.scene);
-    gridMat.diffuseColor = new Color3(0.15, 0.15, 0.25);
-    gridMat.wireframe = true;
-    gridMat.backFaceCulling = false;
-    grid.material = gridMat;
-    grid.position.y = -0.001;
-    grid.isPickable = false;
+    // Invisible floor for XR teleportation only
+    const floor = MeshBuilder.CreateGround('__grid', { width: 30, height: 30 }, this.scene);
+    floor.visibility = 0;
+    floor.isPickable = false;
+
+    // ── Post-processing pipeline ─────────────────────────────────────────────
+    const pipeline = new DefaultRenderingPipeline('defaultPipeline', true, this.scene, [this.camera]);
+    pipeline.bloomEnabled = true;
+    pipeline.bloomThreshold = 0.8;
+    pipeline.bloomWeight = 0.4;
+    pipeline.bloomKernel = 64;
+    pipeline.bloomScale = 0.5;
+    pipeline.fxaaEnabled = true;
+    pipeline.imageProcessingEnabled = true;
+    pipeline.imageProcessing.toneMappingEnabled = true;
+    pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+    pipeline.imageProcessing.vignetteEnabled = true;
+    pipeline.imageProcessing.vignetteWeight = 1.5;
+    pipeline.imageProcessing.vignetteColor = new Color4(0, 0, 0, 0);
+    pipeline.imageProcessing.contrast = 1.1;
+    pipeline.imageProcessing.exposure = 1.1;
 
     // Resize handler
     window.addEventListener('resize', () => this.engine.resize());
@@ -433,7 +447,7 @@ export class BabylonSceneManager {
     const mesh = this.meshes.get(id);
     if (!mesh) return;
 
-    // Use Babylon Animation API for smooth tweening
+    // Stop any running animation on this mesh first
     this.scene.stopAnimation(mesh);
 
     const prop3D = property === 'scale' ? mesh.scaling : property === 'rotation' ? mesh.rotation : mesh.position;
@@ -455,7 +469,6 @@ export class BabylonSceneManager {
 
     applyEasingFn(anim, easing);
 
-    // from is read from mesh.rotation (already radians) or mesh.position/scaling (no conversion needed)
     const fromVec = new Vector3(from.x, from.y, from.z);
 
     const totalFrames = Math.round(duration * 60);
@@ -464,8 +477,8 @@ export class BabylonSceneManager {
       { frame: totalFrames, value: toVec   },
     ]);
 
-    mesh.animations = [anim];
-    this.scene.beginAnimation(mesh, 0, totalFrames, loop, 1);
+    // Use beginDirectAnimation for reliable playback
+    this.scene.beginDirectAnimation(mesh, [anim], 0, totalFrames, loop, 1);
   }
 
   stopAnimation(id: string): void {

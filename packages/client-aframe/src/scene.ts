@@ -217,7 +217,8 @@ export class AFrameSceneManager {
   ): void {
     const el = this.objects.get(id);
     if (!el) return;
-    // A-Frame animation component
+    // A-Frame animation component — use component properties (not object3D path)
+    // so vec3 interpolation and degree-based rotation work correctly.
     const toStr = vec3ToStr(to);
     const easingMap: Record<string, string> = {
       linear: 'linear',
@@ -227,8 +228,8 @@ export class AFrameSceneManager {
     };
     const aframeEasing = easingMap[easing] ?? 'linear';
     el.setAttribute('animation', [
-      `property: object3D.${property}`,
-      `to: ${toStr.replace(/ /g, ' ')}`,
+      `property: ${property}`,
+      `to: ${toStr}`,
       `dur: ${Math.round(duration * 1000)}`,
       `easing: ${aframeEasing}`,
       `loop: ${loop}`,
