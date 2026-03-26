@@ -13,6 +13,7 @@ import {
   SceneState,
   Vec3,
 } from './types.js';
+import * as THREE from 'three';
 
 function vec3ToStr(v: Vec3 | string): string {
   if (typeof v === 'string') return v;
@@ -28,6 +29,32 @@ export class AFrameSceneManager {
 
   constructor() {
     this.scene = document.querySelector('a-scene')!;
+
+    // ── Configure underlying Three.js renderer for higher fidelity ──
+    const aScene = this.scene as unknown as { renderer: THREE.WebGLRenderer; object3D: THREE.Scene };
+    const setupRenderer = () => {
+      if (aScene.renderer) {
+        aScene.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        aScene.renderer.toneMappingExposure = 1.0;
+        aScene.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        // Generate procedural IBL environment for PBR reflections
+        const pmrem = new THREE.PMREMGenerator(aScene.renderer);
+        pmrem.compileEquirectangularShader();
+        const envScene = new THREE.Scene();
+        envScene.add(new THREE.HemisphereLight(0x8899bb, 0x223344, 2.0));
+        const key = new THREE.DirectionalLight(0xffeedd, 3.0);
+        key.position.set(5, 8, 3);
+        envScene.add(key);
+        const fill = new THREE.DirectionalLight(0xaabbdd, 1.0);
+        fill.position.set(-3, 4, -5);
+        envScene.add(fill);
+        aScene.object3D.environment = pmrem.fromScene(envScene, 0, 0.1, 100).texture;
+        pmrem.dispose();
+      }
+    };
+    if ((this.scene as HTMLElement).hasAttribute('loaded')) setupRenderer();
+    else this.scene.addEventListener('loaded', setupRenderer, { once: true } as AddEventListenerOptions);
 
     // ── Default lighting ───────────────────────────────────────
     const ambient = this.entity();
@@ -69,12 +96,12 @@ export class AFrameSceneManager {
     const r = def.radius ?? 0.5;
 
     switch (def.type) {
-      case 'sphere':   return `primitive: sphere; radius: ${r}`;
-      case 'cylinder': return `primitive: cylinder; radius: ${r}; height: ${h}`;
-      case 'cone':     return `primitive: cone; radiusBottom: ${r}; height: ${h}`;
-      case 'torus':    return `primitive: torus; radius: ${r}; radiusTubular: ${r * 0.4}`;
+      case 'sphere':   return `primitive: sphere; radius: ${r}; segmentsWidth: 64; segmentsHeight: 64`;
+      case 'cylinder': return `primitive: cylinder; radius: ${r}; height: ${h}; segmentsRadial: 64`;
+      case 'cone':     return `primitive: cone; radiusBottom: ${r}; height: ${h}; segmentsRadial: 64`;
+      case 'torus':    return `primitive: torus; radius: ${r}; radiusTubular: ${r * 0.4}; segmentsRadial: 64; segmentsTubular: 24`;
       case 'plane':    return `primitive: plane; width: ${w}; height: ${h}`;
-      case 'capsule':  return `primitive: cylinder; radius: ${r}; height: ${h + r * 2}; openEnded: false`;
+      case 'capsule':  return `primitive: cylinder; radius: ${r}; height: ${h + r * 2}; openEnded: false; segmentsRadial: 64`;
       default:         return `primitive: box; width: ${w}; height: ${h}; depth: ${d}`;
     }
   }

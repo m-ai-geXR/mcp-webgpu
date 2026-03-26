@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -38,6 +39,7 @@ export class SceneManager {
   private animations = new Map<string, ActiveAnimation>();
   private loader   = new THREE.TextureLoader();
   private composer: EffectComposer;
+  private envMap: THREE.Texture | null = null;
 
   /** Optional callback invoked every frame (for VR panel updates, etc.). */
   onTick: ((time: number) => void) | null = null;
@@ -51,13 +53,15 @@ export class SceneManager {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
     // ── Scene ────────────────────────────────────────────────────
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#1a1a2e');
 
-    // Grid removed — clean background only
+    // ── Procedural IBL environment map ──────────────────────────
+    this.generateEnvironment();
 
     // ── Default lighting ─────────────────────────────────────────
     const ambient = new THREE.AmbientLight(0xffffff, 0.3);
@@ -419,14 +423,14 @@ export class SceneManager {
   private buildGeometry(def: SceneObject): THREE.BufferGeometry {
     const w = def.width ?? 1, h = def.height ?? 1, d = def.depth ?? 1;
     const r = def.radius ?? 0.5;
-    const seg = def.segments ?? 32;
+    const seg = def.segments ?? 64;
     switch (def.type) {
       case 'sphere':   return new THREE.SphereGeometry(r, seg, seg);
       case 'cylinder': return new THREE.CylinderGeometry(def.radiusTop ?? r, def.radiusBottom ?? r, h, seg);
       case 'cone':     return new THREE.ConeGeometry(r, h, seg);
-      case 'torus':    return new THREE.TorusGeometry(r, r * 0.4, 16, seg);
+      case 'torus':    return new THREE.TorusGeometry(r, r * 0.4, 24, seg);
       case 'plane':    return new THREE.PlaneGeometry(w, h);
-      case 'capsule':  return new THREE.CapsuleGeometry(r, h, 4, seg);
+      case 'capsule':  return new THREE.CapsuleGeometry(r, h, 8, seg);
       default:         return new THREE.BoxGeometry(w, h, d);
     }
   }
@@ -451,6 +455,8 @@ export class SceneManager {
           roughness: def.roughness ?? 0.7,
           ...(def.emissive ? { emissive: new THREE.Color(def.emissive) } : {}),
           emissiveIntensity: def.emissiveIntensity ?? 1,
+          envMap: this.envMap,
+          envMapIntensity: 1.0,
         });
         if (def.textureUrl) mat.map = this.loader.load(def.textureUrl);
         return mat;
@@ -467,6 +473,7 @@ export class SceneManager {
     if (def.emissive)          mat.emissive.set(def.emissive);
     if (def.emissiveIntensity !== undefined) mat.emissiveIntensity = def.emissiveIntensity;
     if (def.textureUrl)        mat.map = this.loader.load(def.textureUrl);
+    if (this.envMap && !mat.envMap) { mat.envMap = this.envMap; mat.envMapIntensity = 1.0; }
     mat.needsUpdate = true;
   }
 
@@ -481,5 +488,32 @@ export class SceneManager {
         }
       }
     });
+  }
+
+  /**
+   * Generate a procedural studio-style IBL environment map using PMREMGenerator.
+   * Gives PBR materials realistic reflections without loading external HDR files.
+   */
+  private generateEnvironment(): void {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    pmrem.compileEquirectangularShader();
+
+    // Build a small scene with gradient lighting to bake into a cube envmap
+    const envScene = new THREE.Scene();
+    // Hemisphere sky gradient
+    const hemiEnv = new THREE.HemisphereLight(0x8899bb, 0x223344, 2.0);
+    envScene.add(hemiEnv);
+    // Bright key light for specular highlights
+    const keyLight = new THREE.DirectionalLight(0xffeedd, 3.0);
+    keyLight.position.set(5, 8, 3);
+    envScene.add(keyLight);
+    // Fill from opposite side
+    const fillLight = new THREE.DirectionalLight(0xaabbdd, 1.0);
+    fillLight.position.set(-3, 4, -5);
+    envScene.add(fillLight);
+
+    this.envMap = pmrem.fromScene(envScene, 0, 0.1, 100).texture;
+    this.scene.environment = this.envMap;
+    pmrem.dispose();
   }
 }

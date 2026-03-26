@@ -23,6 +23,7 @@ import {
   StandardMaterial,
   PBRMaterial,
   Texture,
+  CubeTexture,
   SceneLoader,
   Animation,
   CircleEase,
@@ -90,6 +91,13 @@ export class BabylonSceneManager {
 
     // Background colour
     this.scene.clearColor = new Color4(0.1, 0.1, 0.17, 1);
+
+    // ── Procedural IBL environment for PBR reflections ──────────
+    this.scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
+      'https://assets.babylonjs.com/environments/environmentSpecular.env',
+      this.scene,
+    );
+    this.scene.environmentIntensity = 0.6;
 
     const hemi = new HemisphericLight('__hemi', new Vector3(0, 1, 0), this.scene);
     hemi.intensity = 0.4;
@@ -291,22 +299,22 @@ export class BabylonSceneManager {
 
     switch (def.type) {
       case 'sphere':
-        mesh = MeshBuilder.CreateSphere(def.id, { diameter: r * 2, segments: 32 }, this.scene);
+        mesh = MeshBuilder.CreateSphere(def.id, { diameter: r * 2, segments: 64 }, this.scene);
         break;
       case 'cylinder':
-        mesh = MeshBuilder.CreateCylinder(def.id, { height: h, diameter: r * 2, tessellation: 32 }, this.scene);
+        mesh = MeshBuilder.CreateCylinder(def.id, { height: h, diameter: r * 2, tessellation: 64 }, this.scene);
         break;
       case 'cone':
-        mesh = MeshBuilder.CreateCylinder(def.id, { height: h, diameterBottom: r * 2, diameterTop: 0, tessellation: 32 }, this.scene);
+        mesh = MeshBuilder.CreateCylinder(def.id, { height: h, diameterBottom: r * 2, diameterTop: 0, tessellation: 64 }, this.scene);
         break;
       case 'torus':
-        mesh = MeshBuilder.CreateTorus(def.id, { diameter: r * 2, thickness: r * 0.8, tessellation: 32 }, this.scene);
+        mesh = MeshBuilder.CreateTorus(def.id, { diameter: r * 2, thickness: r * 0.8, tessellation: 64 }, this.scene);
         break;
       case 'plane':
         mesh = MeshBuilder.CreatePlane(def.id, { width: w, height: h }, this.scene);
         break;
       case 'capsule':
-        mesh = MeshBuilder.CreateCapsule(def.id, { radius: r, height: h + r * 2, tessellation: 16 }, this.scene);
+        mesh = MeshBuilder.CreateCapsule(def.id, { radius: r, height: h + r * 2, tessellation: 32 }, this.scene);
         break;
       default:
         mesh = MeshBuilder.CreateBox(def.id, { width: w, height: h, depth: d }, this.scene);
@@ -393,7 +401,7 @@ export class BabylonSceneManager {
         dl.intensity = def.intensity;
         dl.position  = new Vector3(pos.x, pos.y, pos.z);
         if (def.castShadow) {
-          this.shadowGen = new ShadowGenerator(1024, dl);
+          this.shadowGen = new ShadowGenerator(2048, dl);
           this.shadowGen.useBlurExponentialShadowMap = true;
         }
         light = dl;

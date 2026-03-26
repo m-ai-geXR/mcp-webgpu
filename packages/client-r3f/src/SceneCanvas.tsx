@@ -7,7 +7,7 @@
  */
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF } from '@react-three/drei';
+import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { createXRStore, XR } from '@react-three/xr';
@@ -101,26 +101,17 @@ function ScreenshotCapturer({ onCapture }: { onCapture: (dataUrl: string) => voi
 function useMaterial(def: SceneObject['material']) {
   return useMemo(() => {
     const color = def?.color ?? '#4488ff';
-    if (def?.metalness !== undefined || def?.roughness !== undefined) {
-      return (
-        <meshStandardMaterial
-          color={color}
-          metalness={def?.metalness ?? 0.1}
-          roughness={def?.roughness ?? 0.7}
-          opacity={def?.opacity ?? 1}
-          transparent={(def?.opacity ?? 1) < 1}
-          wireframe={def?.wireframe ?? false}
-        />
-      );
-    }
     return (
       <meshStandardMaterial
         color={color}
+        metalness={def?.metalness ?? 0.1}
+        roughness={def?.roughness ?? 0.7}
         emissive={def?.emissive ?? '#000000'}
         emissiveIntensity={def?.emissiveIntensity ?? 1}
         opacity={def?.opacity ?? 1}
         transparent={(def?.opacity ?? 1) < 1}
         wireframe={def?.wireframe ?? false}
+        envMapIntensity={1.0}
       />
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,12 +127,12 @@ function ObjectGeometry({ obj }: { obj: SceneObject }) {
   const r = obj.radius ?? 0.5;
 
   switch (obj.type) {
-    case 'sphere':   return <sphereGeometry     args={[r, 32, 32]} />;
-    case 'cylinder': return <cylinderGeometry   args={[r, r, h, 32]} />;
-    case 'cone':     return <coneGeometry       args={[r, h, 32]} />;
-    case 'torus':    return <torusGeometry      args={[r, r * 0.4, 16, 32]} />;
+    case 'sphere':   return <sphereGeometry     args={[r, 64, 64]} />;
+    case 'cylinder': return <cylinderGeometry   args={[r, r, h, 64]} />;
+    case 'cone':     return <coneGeometry       args={[r, h, 64]} />;
+    case 'torus':    return <torusGeometry      args={[r, r * 0.4, 24, 64]} />;
     case 'plane':    return <planeGeometry      args={[w, h]} />;
-    case 'capsule':  return <capsuleGeometry    args={[r, h, 8, 16]} />;
+    case 'capsule':  return <capsuleGeometry    args={[r, h, 8, 32]} />;
     default:         return <boxGeometry        args={[w, h, d]} />;
   }
 }
@@ -309,8 +300,9 @@ export function SceneCanvas({
     <Canvas
       style={{ position: 'absolute', inset: 0 }}
       shadows
+      dpr={[1, 2]}
       camera={{ position: [5, 5, 10], fov: 60, near: 0.1, far: 2000 }}
-      gl={{ preserveDrawingBuffer: true }}
+      gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
       <XR store={xrStore}>
         {/* Background colour */}
@@ -332,7 +324,16 @@ export function SceneCanvas({
         {/* Default lighting */}
         <ambientLight intensity={0.3} />
         <hemisphereLight args={[0x87ceeb, 0x362907, 0.3]} />
-        <directionalLight position={[5, 10, 7]} intensity={0.8} castShadow />
+        <directionalLight
+          position={[5, 10, 7]}
+          intensity={0.8}
+          castShadow
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+        />
+
+        {/* Procedural IBL environment for PBR reflections */}
+        <Environment preset="studio" environmentIntensity={0.6} />
 
         {/* Lights */}
         {Object.values(lights).map((l) => (
