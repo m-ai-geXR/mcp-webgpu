@@ -326,6 +326,10 @@ export function SceneCanvas({
 
         {/* Grid removed — clean background only */}
 
+        {/* Default lighting */}
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[5, 10, 7]} intensity={0.8} castShadow />
+
         {/* Lights */}
         {Object.values(lights).map((l) => (
           <SceneLightComponent key={l.id} light={l} />

@@ -28,6 +28,18 @@ export class AFrameSceneManager {
 
   constructor() {
     this.scene = document.querySelector('a-scene')!;
+
+    // ── Default lighting ───────────────────────────────────────
+    const ambient = this.entity();
+    ambient.setAttribute('light', 'type: ambient; color: #ffffff; intensity: 0.4');
+    ambient.setAttribute('id', '__default_ambient');
+    this.scene.appendChild(ambient);
+
+    const dir = this.entity();
+    dir.setAttribute('light', 'type: directional; color: #ffffff; intensity: 0.8; castShadow: true');
+    dir.setAttribute('position', '5 10 7');
+    dir.setAttribute('id', '__default_dir');
+    this.scene.appendChild(dir);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

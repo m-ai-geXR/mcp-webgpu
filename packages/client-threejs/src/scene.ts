@@ -59,6 +59,17 @@ export class SceneManager {
 
     // Grid removed — clean background only
 
+    // ── Default lighting ─────────────────────────────────────────
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    ambient.name = '__default_ambient';
+    this.scene.add(ambient);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.name = '__default_dir';
+    dirLight.position.set(5, 10, 7);
+    dirLight.castShadow = true;
+    this.scene.add(dirLight);
+
     // ── Camera ───────────────────────────────────────────────────
     this.camera = new THREE.PerspectiveCamera(
       60,
@@ -429,7 +440,7 @@ export class SceneManager {
           ...base,
           metalness: def.metalness ?? 0.1,
           roughness: def.roughness ?? 0.7,
-          emissive: def.emissive ? new THREE.Color(def.emissive) : undefined,
+          ...(def.emissive ? { emissive: new THREE.Color(def.emissive) } : {}),
           emissiveIntensity: def.emissiveIntensity ?? 1,
         });
         if (def.textureUrl) mat.map = this.loader.load(def.textureUrl);
