@@ -66,8 +66,8 @@ export function dispatch(cmd: Cmd): string | null {
         fromX: (from as {x:number}).x, fromY: (from as {y:number}).y, fromZ: (from as {z:number}).z,
         toX: to.x,  toY: to.y,   toZ: to.z,
         startTime: performance.now(),
-        duration:  (cmd.duration as number) * 1000,
-        easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'easeInOut',
+        duration:  ((cmd.duration as number) ?? 1) * 1000,
+        easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'linear',
         loop:      (cmd.loop     as boolean) ?? false,
       };
       store.startAnimation(anim);

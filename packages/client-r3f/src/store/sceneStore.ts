@@ -107,11 +107,14 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   })),
 
   // ── Animation ─────────────────────────────────────────────────────────────
-  startAnimation: (anim) => set((s) => ({ animations: { ...s.animations, [anim.id]: anim } })),
+  startAnimation: (anim) => set((s) => ({ animations: { ...s.animations, [`${anim.id}_${anim.property}`]: anim } })),
 
   stopAnimation: (id) => set((s) => {
-    const { [id]: _, ...rest } = s.animations;
-    return { animations: rest };
+    const animations = { ...s.animations };
+    for (const key of Object.keys(animations)) {
+      if (key === id || key.startsWith(`${id}_`)) delete animations[key];
+    }
+    return { animations };
   }),
 
   tickAnimation: (id, [x, y, z]) => {

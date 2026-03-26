@@ -39,12 +39,10 @@ function lerpNum(a: number, b: number, t: number): number { return a + (b - a) *
  * mutates registered mesh refs directly each frame.
  */
 function AnimationTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<string, THREE.Object3D>> }) {
-  const stopAnimation = useSceneStore((s) => s.stopAnimation);
-
   useFrame(() => {
     const { animations } = useSceneStore.getState();
-    for (const [id, anim] of Object.entries(animations)) {
-      const mesh = meshRefs.current.get(id);
+    for (const [key, anim] of Object.entries(animations)) {
+      const mesh = meshRefs.current.get(anim.id);
       if (!mesh) continue;
 
       const elapsed = performance.now() - anim.startTime;
@@ -54,7 +52,7 @@ function AnimationTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<st
         useSceneStore.setState((s) => ({
           animations: {
             ...s.animations,
-            [id]: { ...anim, startTime: performance.now() },
+            [key]: { ...anim, startTime: performance.now() },
           },
         }));
         t = 0;
@@ -69,7 +67,12 @@ function AnimationTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<st
       else if (anim.property === 'scale') mesh.scale.set(x, y, z);
       else mesh.rotation.set(THREE.MathUtils.degToRad(x), THREE.MathUtils.degToRad(y), THREE.MathUtils.degToRad(z));
 
-      if (t >= 1 && !anim.loop) stopAnimation(id);
+      if (t >= 1 && !anim.loop) {
+        useSceneStore.setState((s) => {
+          const { [key]: _, ...rest } = s.animations;
+          return { animations: rest };
+        });
+      }
     }
   });
 
@@ -327,7 +330,8 @@ export function SceneCanvas({
         {/* Grid removed — clean background only */}
 
         {/* Default lighting */}
-        <ambientLight intensity={0.4} />
+        <ambientLight intensity={0.3} />
+        <hemisphereLight args={[0x87ceeb, 0x362907, 0.3]} />
         <directionalLight position={[5, 10, 7]} intensity={0.8} castShadow />
 
         {/* Lights */}

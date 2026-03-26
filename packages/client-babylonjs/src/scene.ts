@@ -27,6 +27,7 @@ import {
   Animation,
   CircleEase,
   CubicEase,
+  Animatable,
   EasingFunction,
   WebXRDefaultExperience,
   DynamicTexture,
@@ -74,6 +75,7 @@ export class BabylonSceneManager {
   private lights       = new Map<string, HemisphericLight | DirectionalLight | PointLight | SpotLight>();
   private shadowGen:     ShadowGenerator | null = null;
   private tweens       = new Map<string, ActiveTween>();
+  private animatables  = new Map<string, Animatable>();
 
   // ── WebXR VR ─────────────────────────────────────────────────────────────
   private xrExperience: WebXRDefaultExperience | null = null;
@@ -89,9 +91,12 @@ export class BabylonSceneManager {
     // Background colour
     this.scene.clearColor = new Color4(0.1, 0.1, 0.17, 1);
 
-    // Default hemisphere light (low intensity — server will add its own)
     const hemi = new HemisphericLight('__hemi', new Vector3(0, 1, 0), this.scene);
-    hemi.intensity = 0.3;
+    hemi.intensity = 0.4;
+
+    const defaultDir = new DirectionalLight('__default_dir', new Vector3(-1, -2, -1).normalize(), this.scene);
+    defaultDir.position = new Vector3(5, 10, 7);
+    defaultDir.intensity = 0.8;
 
     // Arc-rotate camera (orbit controls built in)
     this.camera = new ArcRotateCamera('main-cam', -Math.PI / 4, Math.PI / 3, 10, Vector3.Zero(), this.scene);
@@ -333,6 +338,12 @@ export class BabylonSceneManager {
     mesh.dispose();
     this.meshes.delete(id);
     this.tweens.delete(id);
+    for (const [key, animatable] of this.animatables) {
+      if (key.startsWith(`${id}_`)) {
+        animatable.stop();
+        this.animatables.delete(key);
+      }
+    }
   }
 
   // ── Lights ──────────────────────────────────────────────────────────────────
@@ -447,8 +458,10 @@ export class BabylonSceneManager {
     const mesh = this.meshes.get(id);
     if (!mesh) return;
 
-    // Stop any running animation on this mesh first
-    this.scene.stopAnimation(mesh);
+    // Stop only the animation for this specific property (not all animations on mesh)
+    const animKey = `${id}_${property}`;
+    const existing = this.animatables.get(animKey);
+    if (existing) { existing.stop(); this.animatables.delete(animKey); }
 
     const prop3D = property === 'scale' ? mesh.scaling : property === 'rotation' ? mesh.rotation : mesh.position;
     const from = { x: prop3D.x, y: prop3D.y, z: prop3D.z };
@@ -478,12 +491,17 @@ export class BabylonSceneManager {
     ]);
 
     // Use beginDirectAnimation for reliable playback
-    this.scene.beginDirectAnimation(mesh, [anim], 0, totalFrames, loop, 1);
+    const animatable = this.scene.beginDirectAnimation(mesh, [anim], 0, totalFrames, loop, 1);
+    this.animatables.set(animKey, animatable);
   }
 
   stopAnimation(id: string): void {
-    const mesh = this.meshes.get(id);
-    if (mesh) this.scene.stopAnimation(mesh);
+    for (const [key, animatable] of this.animatables) {
+      if (key === id || key.startsWith(`${id}_`)) {
+        animatable.stop();
+        this.animatables.delete(key);
+      }
+    }
     this.tweens.delete(id);
   }
 
@@ -515,6 +533,7 @@ export class BabylonSceneManager {
     for (const id of [...this.meshes.keys()]) this.deleteObject(id);
     for (const id of [...this.lights.keys()])  this.deleteLight(id);
     this.tweens.clear();
+    this.animatables.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);

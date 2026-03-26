@@ -31,9 +31,14 @@ export class AFrameSceneManager {
 
     // ── Default lighting ───────────────────────────────────────
     const ambient = this.entity();
-    ambient.setAttribute('light', 'type: ambient; color: #ffffff; intensity: 0.4');
+    ambient.setAttribute('light', 'type: ambient; color: #ffffff; intensity: 0.3');
     ambient.setAttribute('id', '__default_ambient');
     this.scene.appendChild(ambient);
+
+    const hemi = this.entity();
+    hemi.setAttribute('light', 'type: hemisphere; color: #87ceeb; groundColor: #362907; intensity: 0.3');
+    hemi.setAttribute('id', '__default_hemi');
+    this.scene.appendChild(hemi);
 
     const dir = this.entity();
     dir.setAttribute('light', 'type: directional; color: #ffffff; intensity: 0.8; castShadow: true');
@@ -239,7 +244,7 @@ export class AFrameSceneManager {
       easeInOut: 'easeInOutQuad',
     };
     const aframeEasing = easingMap[easing] ?? 'linear';
-    el.setAttribute('animation', [
+    el.setAttribute(`animation__${property}`, [
       `property: ${property}`,
       `to: ${toStr}`,
       `dur: ${Math.round(duration * 1000)}`,
@@ -251,6 +256,9 @@ export class AFrameSceneManager {
   stopAnimation(id: string): void {
     const el = this.objects.get(id);
     if (!el) return;
+    el.removeAttribute('animation__position');
+    el.removeAttribute('animation__rotation');
+    el.removeAttribute('animation__scale');
     el.removeAttribute('animation');
   }
 

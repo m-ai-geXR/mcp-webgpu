@@ -60,14 +60,19 @@ export class SceneManager {
     // Grid removed — clean background only
 
     // ── Default lighting ─────────────────────────────────────────
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     ambient.name = '__default_ambient';
     this.scene.add(ambient);
+
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.3);
+    hemiLight.name = '__default_hemi';
+    this.scene.add(hemiLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.name = '__default_dir';
     dirLight.position.set(5, 10, 7);
     dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(2048, 2048);
     this.scene.add(dirLight);
 
     // ── Camera ───────────────────────────────────────────────────
@@ -125,10 +130,10 @@ export class SceneManager {
   }
 
   private tick(time: number): void {
-    // Advance animations
-    for (const [id, anim] of this.animations) {
-      const obj = this.objects.get(id);
-      if (!obj) { this.animations.delete(id); continue; }
+    // Advance animations (keyed by `${id}_${property}` for concurrent support)
+    for (const [key, anim] of this.animations) {
+      const obj = this.objects.get(anim.id);
+      if (!obj) { this.animations.delete(key); continue; }
 
       let t = Math.min((time - anim.startTime) / anim.duration, 1);
       if (anim.loop && t >= 1) {
@@ -142,7 +147,7 @@ export class SceneManager {
         anim.fromY + (anim.toY - anim.fromY) * e,
         anim.fromZ + (anim.toZ - anim.fromZ) * e,
       );
-      if (t >= 1 && !anim.loop) this.animations.delete(id);
+      if (t >= 1 && !anim.loop) this.animations.delete(key);
     }
 
     this.controls.update();
@@ -215,7 +220,9 @@ export class SceneManager {
     this.scene.remove(obj);
     this.disposeObject(obj);
     this.objects.delete(id);
-    this.animations.delete(id);
+    for (const key of this.animations.keys()) {
+      if (key === id || key.startsWith(`${id}_`)) this.animations.delete(key);
+    }
   }
 
   // ─── Light management ─────────────────────────────────────────
@@ -333,7 +340,7 @@ export class SceneManager {
     const obj = this.objects.get(id);
     if (!obj) return;
     const from = obj[property] as THREE.Vector3;
-    this.animations.set(id, {
+    this.animations.set(`${id}_${property}`, {
       id, property,
       fromX: from.x, fromY: from.y, fromZ: from.z,
       toX: to.x,    toY: to.y,    toZ: to.z,
@@ -345,7 +352,9 @@ export class SceneManager {
   }
 
   stopAnimation(id: string): void {
-    this.animations.delete(id);
+    for (const key of this.animations.keys()) {
+      if (key === id || key.startsWith(`${id}_`)) this.animations.delete(key);
+    }
   }
 
   // ─── Environment ──────────────────────────────────────────────
