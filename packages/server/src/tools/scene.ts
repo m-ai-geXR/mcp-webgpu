@@ -23,6 +23,54 @@ export const sceneTools: Tool[] = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'saveScene',
+    description: 'Save the current scene to a JSON file in the scenes/ folder. Returns the file path.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'File name (without extension). Defaults to a timestamp-based name.',
+        },
+      },
+    },
+  },
+  {
+    name: 'listScenes',
+    description: 'List all saved scene JSON files in the scenes/ folder.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'loadSceneFromFile',
+    description: 'Load a previously saved scene from the scenes/ folder by name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'File name (with or without .json extension) from listScenes.',
+        },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'exportStandaloneScene',
+    description:
+      'Export the current scene as a standalone HTML file that plays in any browser without a server. ' +
+      'Includes all objects, lights, materials, animations, camera, and environment. No chat UI. ' +
+      'Saved to the scenes/ folder. Returns the file path.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'File name (without .html extension). Defaults to a timestamp-based name.',
+        },
+      },
+    },
+  },
+  {
     name: 'undo',
     description: 'Undo the last scene change (up to 20 levels).',
     inputSchema: { type: 'object', properties: {} },

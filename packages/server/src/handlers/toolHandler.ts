@@ -1,8 +1,27 @@
 import { v4 as uuidv4 } from 'uuid';
+import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SceneStateManager } from '../state/SceneStateManager.js';
 import { WSServer } from '../ws/WSServer.js';
 import { ChatRelay } from '../chat/ChatRelay.js';
 import { SceneState, Vec3, MaterialDef, SceneLight } from '../types.js';
+import { buildStandaloneHTML } from '../export/standaloneExporter.js';
+
+/** Resolve the `scenes/` directory at the monorepo root. */
+function getScenesDir(): string {
+  let dir = dirname(fileURLToPath(import.meta.url));
+  // Walk up from dist/ (or src/) inside packages/server to monorepo root
+  for (let i = 0; i < 5; i++) {
+    const candidate = resolve(dir, 'scenes');
+    if (existsSync(candidate)) return candidate;
+    dir = dirname(dir);
+  }
+  // Fallback: create scenes/ next to packages/
+  const fallback = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'scenes');
+  if (!existsSync(fallback)) mkdirSync(fallback, { recursive: true });
+  return fallback;
+}
 
 export interface ToolContext {
   stateManager: SceneStateManager;
@@ -229,6 +248,52 @@ export async function handleTool(
   if (name === 'clearPendingMessages') {
     chat.clearPending();
     return ok('Pending messages cleared.');
+  }
+
+  // ─── Scene persistence & export ─────────────────────────────────────────────
+
+  if (name === 'saveScene') {
+    const scenesDir = getScenesDir();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = ((input as { name?: string }).name || `scene-${ts}`) + '.json';
+    const filePath = resolve(scenesDir, fileName);
+    const state = sm.getState();
+    writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf-8');
+    return ok(`Scene saved to scenes/${fileName}`);
+  }
+
+  if (name === 'listScenes') {
+    const scenesDir = getScenesDir();
+    const files = readdirSync(scenesDir).filter(f => f.endsWith('.json'));
+    if (files.length === 0) return ok('No saved scenes found.');
+    return ok(`Saved scenes:\n${files.map(f => `  - ${f}`).join('\n')}`);
+  }
+
+  if (name === 'loadSceneFromFile') {
+    const { name: sceneName } = input as { name: string };
+    const scenesDir = getScenesDir();
+    const fileName = sceneName.endsWith('.json') ? sceneName : `${sceneName}.json`;
+    const filePath = resolve(scenesDir, fileName);
+    if (!existsSync(filePath)) return err(`Scene file "${fileName}" not found`);
+    let parsed: SceneState;
+    try {
+      parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as SceneState;
+    } catch {
+      return err(`Failed to parse scene file "${fileName}"`);
+    }
+    sm.loadScene(parsed);
+    ws.sendCommand({ action: 'loadScene', commandId: uuidv4(), state: parsed });
+    return ok(`Scene loaded from scenes/${fileName}`);
+  }
+
+  if (name === 'exportStandaloneScene') {
+    const scenesDir = getScenesDir();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = ((input as { name?: string }).name || `export-${ts}`) + '.html';
+    const filePath = resolve(scenesDir, fileName);
+    const html = buildStandaloneHTML(sm.getState());
+    writeFileSync(filePath, html, 'utf-8');
+    return ok(`Standalone scene exported to scenes/${fileName} — open it in any browser!`);
   }
 
   return err(`Unknown tool: "${name}"`);

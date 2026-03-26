@@ -5,3 +5,7 @@ build/
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# User-saved scenes (keep folder, ignore contents)
+scenes/*.json
+scenes/*.html
