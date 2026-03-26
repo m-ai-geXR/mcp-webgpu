@@ -77,16 +77,16 @@ I'll create a red cube and a blue sphere for you.
 If the user just asks a question (not a scene change), reply normally without commands.
 Keep explanations concise.`;
 
-/** Model lists per provider — shown in the client dropdown. */
+/** Model lists per provider — shown in the client dropdown. Synced with iOSMaigeXr. */
 const PROVIDER_CATALOG: Record<Provider, { label: string; models: string[]; defaultModel: string }> = {
-  openai:    { label: 'OpenAI',       models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-mini', 'o4-mini'], defaultModel: 'gpt-4.1' },
-  anthropic: { label: 'Anthropic',    models: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5', 'claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'], defaultModel: 'claude-sonnet-4-6' },
-  google:    { label: 'Google Gemini', models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'], defaultModel: 'gemini-2.5-pro' },
+  openai:    { label: 'OpenAI',        models: ['gpt-5.2', 'gpt-5.2-pro', 'gpt-5.2-chat-latest', 'o1-2024-12-17', 'o3-mini-2025-01-31', 'gpt-4o', 'gpt-4o-mini'], defaultModel: 'gpt-5.2' },
+  anthropic: { label: 'Anthropic',     models: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001', 'claude-opus-4-1-20250805', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20240620', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'], defaultModel: 'claude-sonnet-4-5-20250929' },
+  google:    { label: 'Google Gemini', models: ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'], defaultModel: 'gemini-3.1-pro-preview' },
   mistral:   { label: 'Mistral',      models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'open-mistral-nemo'], defaultModel: 'mistral-large-latest' },
   groq:      { label: 'Groq',         models: ['llama-3.3-70b-versatile', 'deepseek-r1-distill-llama-70b', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'], defaultModel: 'llama-3.3-70b-versatile' },
-  xai:       { label: 'xAI / Grok',   models: ['grok-3', 'grok-3-mini', 'grok-3-fast', 'grok-2'], defaultModel: 'grok-3' },
+  xai:       { label: 'xAI / Grok',   models: ['grok-4-0709', 'grok-4-fast-reasoning', 'grok-3', 'grok-3-mini', 'grok-code-fast-1'], defaultModel: 'grok-4-0709' },
   cohere:    { label: 'Cohere',       models: ['command-r-plus', 'command-r', 'command', 'command-light'], defaultModel: 'command-r-plus' },
-  together:  { label: 'Together.ai',  models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo', 'deepseek-ai/DeepSeek-R1', 'Qwen/Qwen2.5-72B-Instruct-Turbo'], defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+  together:  { label: 'Together.ai',  models: ['deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free', 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free', 'meta-llama/Meta-Llama-3-8B-Instruct-Lite', 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', 'Qwen/Qwen2.5-7B-Instruct-Turbo'], defaultModel: 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free' },
   ollama:    { label: 'Ollama (local)', models: ['llama3.2', 'llama3.2:1b', 'mistral', 'phi4', 'gemma3', 'qwen2.5', 'deepseek-r1'], defaultModel: 'llama3.2' },
 };
 
