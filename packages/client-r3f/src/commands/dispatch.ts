@@ -56,9 +56,9 @@ export function dispatch(cmd: Cmd): string | null {
     // ── Animation ─────────────────────────────────────────────────────────────
     case 'animateObject': {
       const obj = store.objects[cmd.id as string];
-      if (!obj) console.warn(`[R3F] animateObject: object "${cmd.id}" not in store yet, using defaults`);
+      if (!obj) break;
       const prop = cmd.property as 'position' | 'rotation' | 'scale';
-      const from = obj?.[prop] ?? { x: 0, y: 0, z: 0 };
+      const from = obj[prop] ?? { x: 0, y: 0, z: 0 };
       const to   = cmd.to as { x: number; y: number; z: number };
       const anim: ActiveAnimation = {
         id:        cmd.id       as string,
@@ -67,7 +67,7 @@ export function dispatch(cmd: Cmd): string | null {
         toX: to.x,  toY: to.y,   toZ: to.z,
         startTime: performance.now(),
         duration:  (cmd.duration as number) * 1000,
-        easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'linear',
+        easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'easeInOut',
         loop:      (cmd.loop     as boolean) ?? false,
       };
       store.startAnimation(anim);

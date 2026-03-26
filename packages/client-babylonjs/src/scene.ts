@@ -226,15 +226,6 @@ export class BabylonSceneManager {
     this.vrChatTexture.update();
   }
 
-  private applyTweenEasing(t: number, easing: string): number {
-    switch (easing) {
-      case 'easeIn':    return t * t * t;
-      case 'easeOut':   return 1 - Math.pow(1 - t, 3);
-      case 'easeInOut': return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      default:          return t; // linear
-    }
-  }
-
   private advanceTweens(): void {
     const now = performance.now();
     for (const [id, tw] of this.tweens) {
@@ -244,7 +235,8 @@ export class BabylonSceneManager {
       let t = Math.min((now - tw.startMs) / tw.durationMs, 1);
       if (tw.loop && t >= 1) { tw.startMs = now; t = 0; }
 
-      const e = this.applyTweenEasing(t, tw.easing);
+      // Cubic ease-in-out approximation for JS tweens
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const lerp = (a: number, b: number) => a + (b - a) * e;
 
       const x = lerp(tw.fromX, tw.toX);
@@ -254,8 +246,7 @@ export class BabylonSceneManager {
       if (tw.property === 'scale') {
         mesh.scaling.set(x, y, z);
       } else if (tw.property === 'rotation') {
-        // Values already in radians from animateObject
-        mesh.rotation.set(x, y, z);
+        mesh.rotation.set(toRad(x), toRad(y), toRad(z));
       } else {
         mesh.position.set(x, y, z);
       }
@@ -454,30 +445,40 @@ export class BabylonSceneManager {
     loop: boolean,
   ): void {
     const mesh = this.meshes.get(id);
-    if (!mesh) { console.warn(`[Babylon] animateObject: mesh "${id}" not found`); return; }
+    if (!mesh) return;
 
-    // Stop any running Babylon animation on this mesh
+    // Stop any running animation on this mesh first
     this.scene.stopAnimation(mesh);
 
     const prop3D = property === 'scale' ? mesh.scaling : property === 'rotation' ? mesh.rotation : mesh.position;
+    const from = { x: prop3D.x, y: prop3D.y, z: prop3D.z };
 
-    // Convert rotation to radians for the target
-    const toX = property === 'rotation' ? toRad(to.x) : to.x;
-    const toY = property === 'rotation' ? toRad(to.y) : to.y;
-    const toZ = property === 'rotation' ? toRad(to.z) : to.z;
+    const toVec = property === 'rotation'
+      ? new Vector3(toRad(to.x), toRad(to.y), toRad(to.z))
+      : new Vector3(to.x, to.y, to.z);
 
-    // Use the JS tween system (driven by advanceTweens in the render loop)
-    // which mirrors the proven ThreeJS animation approach.
-    this.tweens.set(id, {
-      mesh: mesh as unknown as ActiveTween['mesh'],
-      property,
-      fromX: prop3D.x, fromY: prop3D.y, fromZ: prop3D.z,
-      toX, toY, toZ,
-      startMs: performance.now(),
-      durationMs: duration * 1000,
-      easing,
-      loop,
-    });
+    const bProp = property === 'scale' ? 'scaling' : property;
+
+    const anim = new Animation(
+      `${id}_${property}`,
+      bProp,
+      60,
+      Animation.ANIMATIONTYPE_VECTOR3,
+      loop ? Animation.ANIMATIONLOOPMODE_CYCLE : Animation.ANIMATIONLOOPMODE_CONSTANT,
+    );
+
+    applyEasingFn(anim, easing);
+
+    const fromVec = new Vector3(from.x, from.y, from.z);
+
+    const totalFrames = Math.round(duration * 60);
+    anim.setKeys([
+      { frame: 0,           value: fromVec },
+      { frame: totalFrames, value: toVec   },
+    ]);
+
+    // Use beginDirectAnimation for reliable playback
+    this.scene.beginDirectAnimation(mesh, [anim], 0, totalFrames, loop, 1);
   }
 
   stopAnimation(id: string): void {
