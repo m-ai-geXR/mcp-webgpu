@@ -12,6 +12,8 @@
 - **WebXR / VR support** — enter immersive VR in all four clients; floating chat panel follows your gaze so you can talk to the AI from inside the headset
 - **9 AI providers** out of the box — OpenAI (GPT-5.2), Anthropic (Claude Sonnet 4.6), Google Gemini 3.1 Pro, Mistral, Groq (Llama 3.3 70B), xAI Grok-4, Cohere Command R+, Together.ai, and local Ollama
 - **23 MCP tools** — objects, lights, cameras, animation, environment, scene I/O, undo/redo, screenshots, and in-world chat
+- **Persistent animations** — animations survive page reloads; the server stores active animations in scene state and replays them when clients reconnect
+- **Concurrent animations** — multiple properties (position, rotation, scale) animate simultaneously on the same object across all engines
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in *that* engine (adapted from the iOS maigeXR app)
 - **In-world chat** — press **`~`** to talk to the AI without leaving the 3D viewport; it reads your messages and answers in a floating overlay
 - **Scene-aware AI** — 20-turn conversation history + live scene state injection ensures the AI makes incremental edits, not destructive rebuilds
@@ -148,7 +150,7 @@ Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROV
 `setCamera` · `flyToObject`
 
 ### Animation
-`animateObject` · `stopAnimation` — rotate, bounce, pulse, float, spin, custom keyframes
+`animateObject` · `stopAnimation` — rotate, bounce, pulse, float, spin, custom keyframes. Animations persist in server state and replay automatically on page reload. Multiple properties animate concurrently per object.
 
 ### Environment
 `setEnvironment` — background color, fog, tone mapping, exposure, shadow toggle
@@ -248,6 +250,7 @@ Each client connects via WebSocket to the same MCP server. The server maintains 
 - **Scene state injection** — every AI call includes a summary of current objects, lights, and environment so the AI knows what already exists
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in that specific engine
 - **Undo/redo** — 20-deep snapshot stack on the server, triggered via MCP tools
+- **Animation persistence** — active animations are stored in scene state and replayed on reconnect, so looping animations survive page reloads
 
 ---
 
@@ -307,6 +310,7 @@ mcp-webgpu/
 - [x] **Phase 3.5** — 9 AI providers, per-framework system prompts, visual alignment across all 4 engines
 - [x] **Phase 4** — WebXR / VR headset support (all 4 clients + floating VR chat panel)
 - [x] **Phase 5** — VS Code MCP config, auto-open browser, conversation history + scene state awareness
+- [x] **Phase 6** — Animation persistence, concurrent multi-property animations, enhanced default lighting (ambient + hemisphere + directional with shadows)
 
 ---
 
