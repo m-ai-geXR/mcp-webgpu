@@ -194,7 +194,7 @@ export class ChatOverlay {
     const el = document.getElementById('status')!;
     el.className = `${status}`;
     el.textContent =
-      status === 'connected'    ? '● Connected'   :
+      status === 'connected'    ? '● Connected — Three.js'   :
       status === 'disconnected' ? '● Disconnected' :
                                   '● Connecting…';
   }

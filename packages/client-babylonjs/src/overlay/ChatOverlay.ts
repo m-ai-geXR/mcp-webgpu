@@ -142,7 +142,7 @@ export class ChatOverlay {
   setStatus(status: 'connecting' | 'connected' | 'disconnected'): void {
     const el = document.getElementById('status')!;
     el.className = `status ${status}`;
-    el.textContent = status === 'connected' ? 'Connected'
+    el.textContent = status === 'connected' ? 'Connected \u2014 Babylon.js'
                    : status === 'connecting' ? 'Connecting\u2026'
                    : 'Disconnected';
   }
