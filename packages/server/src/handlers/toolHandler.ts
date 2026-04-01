@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { SceneStateManager } from '../state/SceneStateManager.js';
 import { WSServer } from '../ws/WSServer.js';
 import { ChatRelay } from '../chat/ChatRelay.js';
-import { SceneState, Vec3, MaterialDef, SceneLight } from '../types.js';
+import { SceneState, Vec3, MaterialDef, SceneLight, ParticleDef } from '../types.js';
 import { buildStandaloneHTML } from '../export/standaloneExporter.js';
 
 /** Resolve the `scenes/` directory at the monorepo root. */
@@ -141,18 +141,19 @@ export async function handleTool(
   if (name === 'animateObject') {
     const { id, property, to, duration = 1, easing = 'linear', loop = false } = input as {
       id: string;
-      property: 'position' | 'rotation' | 'scale';
-      to: Vec3;
+      property: string;
+      to: Vec3 | number | string;
       duration?: number;
       easing?: string;
       loop?: boolean;
     };
     const obj = sm.getObject(id);
     if (!obj) return err(`Object "${id}" not found`);
-    // Update server state to target immediately
-    sm.updateObject(id, { [property]: to });
-    // Persist animation definition so it survives page reloads
-    sm.addAnimation({ id, property, to, duration, easing, loop });
+    // For transform properties, update server state to target
+    if (['position', 'rotation', 'scale'].includes(property)) {
+      sm.updateObject(id, { [property]: to });
+    }
+    sm.addAnimation({ id, property: property as any, to, duration, easing, loop });
     ws.sendCommand({
       action: 'animateObject',
       commandId: uuidv4(),
@@ -163,7 +164,7 @@ export async function handleTool(
       easing,
       loop,
     });
-    return ok(`Animating ${property} of "${id}" to ${JSON.stringify(to)} over ${duration}s`);
+    return ok(`Animating ${property} of "${id}" over ${duration}s`);
   }
 
   if (name === 'stopAnimation') {
@@ -248,6 +249,31 @@ export async function handleTool(
   if (name === 'clearPendingMessages') {
     chat.clearPending();
     return ok('Pending messages cleared.');
+  }
+
+  // ─── Scene persistence & export ─────────────────────────────────────────────
+
+  // ─── Particle tools ───────────────────────────────────────────────────
+
+  if (name === 'createParticles') {
+    const p = sm.createParticles(input as Parameters<typeof sm.createParticles>[0]);
+    ws.sendCommand({ action: 'createParticles', commandId: uuidv4(), ...p });
+    return ok(`Created particle system "${p.id}" with ${p.count} particles`);
+  }
+
+  if (name === 'updateParticles') {
+    const { id, ...props } = input as { id: string } & Partial<ParticleDef>;
+    const p = sm.updateParticles(id, props);
+    if (!p) return err(`Particle system "${id}" not found`);
+    ws.sendCommand({ action: 'updateParticles', commandId: uuidv4(), ...p });
+    return ok(`Updated particles "${id}"`);
+  }
+
+  if (name === 'deleteParticles') {
+    const { id } = input as { id: string };
+    if (!sm.deleteParticles(id)) return err(`Particle system "${id}" not found`);
+    ws.sendCommand({ action: 'deleteParticles', commandId: uuidv4(), id });
+    return ok(`Deleted particles "${id}"`);
   }
 
   // ─── Scene persistence & export ─────────────────────────────────────────────

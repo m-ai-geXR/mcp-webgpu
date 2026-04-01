@@ -2,7 +2,7 @@
  * Command dispatcher — routes MCP action types to BabylonSceneManager methods.
  */
 import { BabylonSceneManager } from '../scene.js';
-import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, Vec3 } from '../types.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, ParticleDef, Vec3 } from '../types.js';
 
 export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown>): void {
   const action = cmd.action as string;
@@ -51,8 +51,8 @@ export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown
     case 'animateObject': {
       const { id, property, to, duration, easing, loop } = cmd as {
         id: string;
-        property: 'position' | 'rotation' | 'scale';
-        to: Vec3;
+        property: string;
+        to: Vec3 | number | string;
         duration?: number;
         easing?: string;
         loop?: boolean;
@@ -69,6 +69,17 @@ export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown
       scene.setEnvironment(cmd as unknown as EnvironmentDef);
       break;
 
+    // ── Particles ────────────────────────────────────────────────────────────
+    case 'createParticles':
+      scene.createParticles(cmd as unknown as ParticleDef);
+      break;
+    case 'updateParticles':
+      scene.updateParticles(cmd as unknown as Partial<ParticleDef> & { id: string });
+      break;
+    case 'deleteParticles':
+      scene.deleteParticles(cmd['id'] as string);
+      break;
+
     // ── Full scene ───────────────────────────────────────────────────────────
     case 'loadScene': {
       const state = (cmd['state'] ?? cmd) as SceneState;
@@ -77,7 +88,7 @@ export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown
       if (state.animations) {
         for (const anim of Object.values(state.animations)) {
           scene.animateObject(
-            anim.id, anim.property as 'position' | 'rotation' | 'scale',
+            anim.id, anim.property,
             anim.to, anim.duration, anim.easing ?? 'linear', anim.loop,
           );
         }

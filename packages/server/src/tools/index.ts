@@ -6,6 +6,7 @@ import { animationTools } from './animation.js';
 import { environmentTools } from './environment.js';
 import { sceneTools } from './scene.js';
 import { chatTools } from './chat.js';
+import { particleTools } from './particles.js';
 
 export const allTools: Tool[] = [
   ...objectTools,
@@ -13,6 +14,7 @@ export const allTools: Tool[] = [
   ...cameraTools,
   ...animationTools,
   ...environmentTools,
+  ...particleTools,
   ...sceneTools,
   ...chatTools,
 ];

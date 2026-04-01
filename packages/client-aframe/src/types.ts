@@ -30,6 +30,8 @@ export interface SceneObject {
   depth?: number;
   radius?: number;
   url?: string;
+  parentId?: string;
+  points?: Vec3[];
   [key: string]: unknown;
 }
 
@@ -58,6 +60,26 @@ export interface EnvironmentDef {
   background?: string;
   fog?: { color: string; near: number; far: number };
   shadows?: boolean;
+  bloom?: { strength?: number; radius?: number; threshold?: number };
+  chromaticAberration?: { offset?: number };
+  vignette?: { offset?: number; darkness?: number };
+}
+
+export interface ParticleDef {
+  id: string;
+  position?: Vec3;
+  count?: number;
+  spread?: Vec3;
+  size?: number;
+  color?: string;
+  emissive?: string;
+  emissiveIntensity?: number;
+  opacity?: number;
+  speed?: number;
+  drift?: Vec3;
+  sizeAttenuation?: boolean;
+  twinkle?: boolean;
+  blending?: 'additive' | 'normal';
 }
 
 export interface SceneState {
@@ -66,14 +88,16 @@ export interface SceneState {
   camera: SceneCamera;
   environment: EnvironmentDef;
   animations?: Record<string, AnimationDef>;
+  particles?: Record<string, ParticleDef>;
 }
 
 /** Persistent animation definition sent by server in loadScene. */
 export interface AnimationDef {
   id: string;
-  property: 'position' | 'rotation' | 'scale';
-  to: Vec3;
+  property: string;
+  to: Vec3 | number | string;
   duration: number;  // seconds
   easing: string;
   loop: boolean;
+  colorTo?: string;
 }

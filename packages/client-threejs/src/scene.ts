@@ -13,6 +13,7 @@ import {
   EnvironmentDef,
   SceneState,
   MaterialDef,
+  ParticleDef,
   Vec3,
   ActiveAnimation,
 } from './types.js';
@@ -36,9 +37,13 @@ export class SceneManager {
 
   private objects  = new Map<string, THREE.Object3D>();
   private lights   = new Map<string, THREE.Light>();
+  private particles = new Map<string, { points: THREE.Points; def: ParticleDef }>();
   private animations = new Map<string, ActiveAnimation>();
   private loader   = new THREE.TextureLoader();
   private composer: EffectComposer;
+  private bloomPass!: UnrealBloomPass;
+  private chromaticAberrationPass: ShaderPass | null = null;
+  private vignettePass: ShaderPass | null = null;
   private envMap: THREE.Texture | null = null;
 
   /** Optional callback invoked every frame (for VR panel updates, etc.). */
@@ -100,13 +105,13 @@ export class SceneManager {
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
 
-    const bloomPass = new UnrealBloomPass(
+    this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(container.clientWidth, container.clientHeight),
       0.4,   // strength
       0.4,   // radius
       0.85,  // threshold
     );
-    this.composer.addPass(bloomPass);
+    this.composer.addPass(this.bloomPass);
 
     const fxaaPass = new ShaderPass(FXAAShader);
     fxaaPass.uniforms['resolution'].value.set(
@@ -145,13 +150,65 @@ export class SceneManager {
         t = 0;
       }
       const e = applyEasing(t, anim.easing);
-      const prop = obj[anim.property] as THREE.Vector3;
-      prop.set(
-        anim.fromX + (anim.toX - anim.fromX) * e,
-        anim.fromY + (anim.toY - anim.fromY) * e,
-        anim.fromZ + (anim.toZ - anim.fromZ) * e,
-      );
+
+      if (anim.property.startsWith('material.')) {
+        // Material property animation
+        const mesh = obj instanceof THREE.Mesh ? obj : null;
+        if (!mesh) continue;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const subProp = anim.property.split('.')[1];
+        if (subProp === 'emissiveIntensity' || subProp === 'opacity') {
+          const from = anim.fromScalar ?? 0;
+          const to = anim.toScalar ?? 1;
+          (mat as any)[subProp] = from + (to - from) * e;
+          if (subProp === 'opacity') mat.transparent = mat.opacity < 1;
+          mat.needsUpdate = true;
+        } else if (subProp === 'color' && anim.fromColor && anim.toColor) {
+          const fromC = new THREE.Color(anim.fromColor);
+          const toC = new THREE.Color(anim.toColor);
+          mat.color.lerpColors(fromC, toC, e);
+        }
+      } else {
+        // Transform animation
+        const prop = obj[anim.property as 'position' | 'rotation' | 'scale'] as THREE.Vector3;
+        if (prop) {
+          prop.set(
+            anim.fromX + (anim.toX - anim.fromX) * e,
+            anim.fromY + (anim.toY - anim.fromY) * e,
+            anim.fromZ + (anim.toZ - anim.fromZ) * e,
+          );
+        }
+      }
       if (t >= 1 && !anim.loop) this.animations.delete(key);
+    }
+
+    // Animate particles (drift + twinkle)
+    const dt = 0.016; // ~60fps
+    for (const [, p] of this.particles) {
+      const geo = p.points.geometry;
+      const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+      if (p.def.speed && p.def.drift) {
+        const dx = p.def.drift.x * p.def.speed * dt;
+        const dy = p.def.drift.y * p.def.speed * dt;
+        const dz = p.def.drift.z * p.def.speed * dt;
+        for (let i = 0; i < pos.count; i++) {
+          pos.setXYZ(i, pos.getX(i) + dx, pos.getY(i) + dy, pos.getZ(i) + dz);
+          // Wrap particles back into spread volume
+          if (Math.abs(pos.getX(i)) > p.def.spread.x) pos.setX(i, -pos.getX(i));
+          if (Math.abs(pos.getY(i)) > p.def.spread.y) pos.setY(i, -pos.getY(i));
+          if (Math.abs(pos.getZ(i)) > p.def.spread.z) pos.setZ(i, -pos.getZ(i));
+        }
+        pos.needsUpdate = true;
+      }
+      if (p.def.twinkle) {
+        const alphas = geo.getAttribute('alpha') as THREE.BufferAttribute;
+        if (alphas) {
+          for (let i = 0; i < alphas.count; i++) {
+            alphas.setX(i, 0.3 + Math.random() * 0.7);
+          }
+          alphas.needsUpdate = true;
+        }
+      }
     }
 
     this.controls.update();
@@ -192,14 +249,35 @@ export class SceneManager {
 
     const geo = this.buildGeometry(def);
     const mat = this.buildMaterial(def.material ?? {});
-    mesh = new THREE.Mesh(geo, mat);
+
+    if (def.type === 'line' && def.points) {
+      // Line geometry for lasers, neon streaks, trails
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(
+        def.points.map(p => new THREE.Vector3(p.x, p.y, p.z)),
+      );
+      const lineMat = new THREE.LineBasicMaterial({
+        color: new THREE.Color(def.material?.color ?? '#00ffff'),
+        linewidth: 2,
+        transparent: true,
+        opacity: def.material?.opacity ?? 1,
+      });
+      mesh = new THREE.Line(lineGeo, lineMat);
+    } else {
+      mesh = new THREE.Mesh(geo, mat);
+      (mesh as THREE.Mesh).castShadow = def.castShadow !== false;
+      (mesh as THREE.Mesh).receiveShadow = def.receiveShadow !== false;
+    }
     mesh.name = def.id;
-    mesh.castShadow = def.castShadow !== false;
-    mesh.receiveShadow = def.receiveShadow !== false;
     mesh.visible = def.visible !== false;
 
     this.applyTransform(mesh, def);
-    this.scene.add(mesh);
+
+    // Parent-child grouping
+    if (def.parentId && this.objects.has(def.parentId)) {
+      this.objects.get(def.parentId)!.add(mesh);
+    } else {
+      this.scene.add(mesh);
+    }
     this.objects.set(def.id, mesh);
   }
 
@@ -334,8 +412,8 @@ export class SceneManager {
 
   animateObject(
     id: string,
-    property: ActiveAnimation['property'],
-    to: Vec3,
+    property: string,
+    to: Vec3 | number | string,
     duration: number,
     easing: ActiveAnimation['easing'],
     loop: boolean,
@@ -343,21 +421,155 @@ export class SceneManager {
   ): void {
     const obj = this.objects.get(id);
     if (!obj) return;
-    const from = obj[property] as THREE.Vector3;
-    this.animations.set(`${id}_${property}`, {
-      id, property,
-      fromX: from.x, fromY: from.y, fromZ: from.z,
-      toX: to.x,    toY: to.y,    toZ: to.z,
-      startTime: time,
-      duration: duration * 1000,
-      easing,
-      loop,
-    });
+
+    if (property.startsWith('material.')) {
+      // Material property animation
+      const mesh = obj instanceof THREE.Mesh ? obj : null;
+      if (!mesh) return;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const subProp = property.split('.')[1];
+      if (subProp === 'emissiveIntensity' || subProp === 'opacity') {
+        this.animations.set(`${id}_${property}`, {
+          id, property,
+          fromX: 0, fromY: 0, fromZ: 0, toX: 0, toY: 0, toZ: 0,
+          fromScalar: (mat as any)[subProp] ?? 0,
+          toScalar: to as number,
+          startTime: time, duration: duration * 1000, easing, loop,
+        });
+      } else if (subProp === 'color') {
+        this.animations.set(`${id}_${property}`, {
+          id, property,
+          fromX: 0, fromY: 0, fromZ: 0, toX: 0, toY: 0, toZ: 0,
+          fromColor: '#' + mat.color.getHexString(),
+          toColor: to as string,
+          startTime: time, duration: duration * 1000, easing, loop,
+        });
+      }
+    } else {
+      const from = obj[property as 'position' | 'rotation' | 'scale'] as THREE.Vector3;
+      if (!from) return;
+      const target = to as Vec3;
+      this.animations.set(`${id}_${property}`, {
+        id, property,
+        fromX: from.x, fromY: from.y, fromZ: from.z,
+        toX: target.x, toY: target.y, toZ: target.z,
+        startTime: time,
+        duration: duration * 1000,
+        easing,
+        loop,
+      });
+    }
   }
 
   stopAnimation(id: string): void {
     for (const key of this.animations.keys()) {
       if (key === id || key.startsWith(`${id}_`)) this.animations.delete(key);
+    }
+  }
+
+  // ─── Particles ────────────────────────────────────────────────
+
+  createParticles(def: ParticleDef): void {
+    this.deleteParticles(def.id);
+    const count = def.count;
+    const positions = new Float32Array(count * 3);
+    const alphas = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 2 * def.spread.x;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * def.spread.y;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 2 * def.spread.z;
+      alphas[i] = 1;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+    const mat = new THREE.PointsMaterial({
+      size: def.size,
+      color: new THREE.Color(def.color),
+      transparent: true,
+      opacity: def.opacity ?? 1,
+      sizeAttenuation: def.sizeAttenuation !== false,
+      blending: def.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const points = new THREE.Points(geo, mat);
+    points.position.set(def.position.x, def.position.y, def.position.z);
+    this.scene.add(points);
+    this.particles.set(def.id, { points, def });
+  }
+
+  updateParticles(update: Partial<ParticleDef> & { id: string }): void {
+    const entry = this.particles.get(update.id);
+    if (!entry) return;
+    const mat = entry.points.material as THREE.PointsMaterial;
+    if (update.color !== undefined) mat.color.set(update.color);
+    if (update.size !== undefined)  mat.size = update.size;
+    if (update.opacity !== undefined) mat.opacity = update.opacity;
+    if (update.position) entry.points.position.set(update.position.x, update.position.y, update.position.z);
+    Object.assign(entry.def, update);
+  }
+
+  deleteParticles(id: string): void {
+    const entry = this.particles.get(id);
+    if (!entry) return;
+    this.scene.remove(entry.points);
+    entry.points.geometry.dispose();
+    (entry.points.material as THREE.PointsMaterial).dispose();
+    this.particles.delete(id);
+  }
+
+  // ─── Post-processing ──────────────────────────────────────────
+
+  updatePostProcessing(env: EnvironmentDef): void {
+    if (env.bloom) {
+      if (env.bloom.strength !== undefined) this.bloomPass.strength = env.bloom.strength;
+      if (env.bloom.radius !== undefined)   this.bloomPass.radius = env.bloom.radius;
+      if (env.bloom.threshold !== undefined) this.bloomPass.threshold = env.bloom.threshold;
+    }
+    if (env.chromaticAberration) {
+      if (!this.chromaticAberrationPass) {
+        const caShader = {
+          uniforms: { tDiffuse: { value: null }, offset: { value: env.chromaticAberration.offset ?? 0.005 } },
+          vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+          fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; varying vec2 vUv;
+            void main() {
+              float r = texture2D(tDiffuse, vUv + vec2(offset, 0.0)).r;
+              float g = texture2D(tDiffuse, vUv).g;
+              float b = texture2D(tDiffuse, vUv - vec2(offset, 0.0)).b;
+              gl_FragColor = vec4(r, g, b, 1.0);
+            }`,
+        };
+        this.chromaticAberrationPass = new ShaderPass(caShader);
+        // Insert before the last pass (FXAA)
+        const passes = this.composer.passes;
+        this.composer.insertPass(this.chromaticAberrationPass, passes.length - 1);
+      } else {
+        this.chromaticAberrationPass.uniforms['offset'].value = env.chromaticAberration.offset;
+      }
+    }
+    if (env.vignette) {
+      if (!this.vignettePass) {
+        const vigShader = {
+          uniforms: {
+            tDiffuse: { value: null },
+            offset: { value: env.vignette.offset ?? 1.0 },
+            darkness: { value: env.vignette.darkness ?? 1.0 },
+          },
+          vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+          fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; uniform float darkness; varying vec2 vUv;
+            void main() {
+              vec4 texel = texture2D(tDiffuse, vUv);
+              vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
+              gl_FragColor = vec4(mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv)), texel.a);
+            }`,
+        };
+        this.vignettePass = new ShaderPass(vigShader);
+        const passes = this.composer.passes;
+        this.composer.insertPass(this.vignettePass, passes.length - 1);
+      } else {
+        this.vignettePass.uniforms['offset'].value = env.vignette.offset;
+        this.vignettePass.uniforms['darkness'].value = env.vignette.darkness;
+      }
     }
   }
 
@@ -389,20 +601,26 @@ export class SceneManager {
     if (env.shadows !== undefined) {
       this.renderer.shadowMap.enabled = env.shadows;
     }
+    // Dynamic post-processing updates
+    if (env.bloom || env.chromaticAberration || env.vignette) {
+      this.updatePostProcessing(env);
+    }
   }
 
   // ─── Full scene rebuild ───────────────────────────────────────
 
   loadScene(state: SceneState): void {
-    // Clear objects
-    for (const id of [...this.objects.keys()]) this.deleteObject(id);
-    for (const id of [...this.lights.keys()])  this.deleteLight(id);
+    // Clear everything
+    for (const id of [...this.objects.keys()])   this.deleteObject(id);
+    for (const id of [...this.lights.keys()])    this.deleteLight(id);
+    for (const id of [...this.particles.keys()]) this.deleteParticles(id);
     this.animations.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);
-    for (const light  of Object.values(state.lights  ?? {})) this.createLight(light);
-    for (const object of Object.values(state.objects ?? {})) this.createObject(object);
+    for (const light    of Object.values(state.lights    ?? {})) this.createLight(light);
+    for (const object   of Object.values(state.objects   ?? {})) this.createObject(object);
+    for (const particle of Object.values(state.particles ?? {})) this.createParticles(particle);
   }
 
   // ─── Screenshot ───────────────────────────────────────────────
@@ -423,10 +641,10 @@ export class SceneManager {
   private buildGeometry(def: SceneObject): THREE.BufferGeometry {
     const w = def.width ?? 1, h = def.height ?? 1, d = def.depth ?? 1;
     const r = def.radius ?? 0.5;
-    const seg = def.segments ?? 64;
+    const seg = (def.segments as number | undefined) ?? 64;
     switch (def.type) {
       case 'sphere':   return new THREE.SphereGeometry(r, seg, seg);
-      case 'cylinder': return new THREE.CylinderGeometry(def.radiusTop ?? r, def.radiusBottom ?? r, h, seg);
+      case 'cylinder': return new THREE.CylinderGeometry((def.radiusTop as number | undefined) ?? r, (def.radiusBottom as number | undefined) ?? r, h, seg);
       case 'cone':     return new THREE.ConeGeometry(r, h, seg);
       case 'torus':    return new THREE.TorusGeometry(r, r * 0.4, 24, seg);
       case 'plane':    return new THREE.PlaneGeometry(w, h);

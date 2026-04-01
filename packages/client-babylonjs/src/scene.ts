@@ -34,6 +34,8 @@ import {
   DynamicTexture,
   DefaultRenderingPipeline,
   ImageProcessingConfiguration,
+  PointsCloudSystem,
+  Mesh,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
@@ -43,6 +45,7 @@ import {
   SceneCamera,
   EnvironmentDef,
   SceneState,
+  ParticleDef,
   Vec3,
   ActiveTween,
 } from './types.js';
@@ -74,9 +77,11 @@ export class BabylonSceneManager {
 
   private meshes       = new Map<string, ReturnType<typeof MeshBuilder.CreateBox>>();
   private lights       = new Map<string, HemisphericLight | DirectionalLight | PointLight | SpotLight>();
+  private particles    = new Map<string, { pcs: PointsCloudSystem; mesh: Mesh; def: ParticleDef }>();
   private shadowGen:     ShadowGenerator | null = null;
   private tweens       = new Map<string, ActiveTween>();
   private animatables  = new Map<string, Animatable>();
+  private pipeline:      DefaultRenderingPipeline | null = null;
 
   // ── WebXR VR ─────────────────────────────────────────────────────────────
   private xrExperience: WebXRDefaultExperience | null = null;
@@ -118,21 +123,21 @@ export class BabylonSceneManager {
     floor.isPickable = false;
 
     // ── Post-processing pipeline ─────────────────────────────────────────────
-    const pipeline = new DefaultRenderingPipeline('defaultPipeline', true, this.scene, [this.camera]);
-    pipeline.bloomEnabled = true;
-    pipeline.bloomThreshold = 0.8;
-    pipeline.bloomWeight = 0.4;
-    pipeline.bloomKernel = 64;
-    pipeline.bloomScale = 0.5;
-    pipeline.fxaaEnabled = true;
-    pipeline.imageProcessingEnabled = true;
-    pipeline.imageProcessing.toneMappingEnabled = true;
-    pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-    pipeline.imageProcessing.vignetteEnabled = true;
-    pipeline.imageProcessing.vignetteWeight = 1.5;
-    pipeline.imageProcessing.vignetteColor = new Color4(0, 0, 0, 0);
-    pipeline.imageProcessing.contrast = 1.1;
-    pipeline.imageProcessing.exposure = 1.1;
+    this.pipeline = new DefaultRenderingPipeline('defaultPipeline', true, this.scene, [this.camera]);
+    this.pipeline.bloomEnabled = true;
+    this.pipeline.bloomThreshold = 0.8;
+    this.pipeline.bloomWeight = 0.4;
+    this.pipeline.bloomKernel = 64;
+    this.pipeline.bloomScale = 0.5;
+    this.pipeline.fxaaEnabled = true;
+    this.pipeline.imageProcessingEnabled = true;
+    this.pipeline.imageProcessing.toneMappingEnabled = true;
+    this.pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+    this.pipeline.imageProcessing.vignetteEnabled = true;
+    this.pipeline.imageProcessing.vignetteWeight = 1.5;
+    this.pipeline.imageProcessing.vignetteColor = new Color4(0, 0, 0, 0);
+    this.pipeline.imageProcessing.contrast = 1.1;
+    this.pipeline.imageProcessing.exposure = 1.1;
 
     // Resize handler
     window.addEventListener('resize', () => this.engine.resize());
@@ -292,6 +297,20 @@ export class BabylonSceneManager {
       return;
     }
 
+    // Line geometry
+    if (def.type === 'line' && def.points && def.points.length >= 2) {
+      const pts = def.points.map(p => new Vector3(p.x, p.y, p.z));
+      mesh = MeshBuilder.CreateLines(def.id, { points: pts }, this.scene) as any;
+      mesh.color = hexToColor3(def.material?.color ?? '#00ffff');
+      mesh.name = def.id;
+      this.applyTransform(mesh, def);
+      if (def.parentId && this.meshes.has(def.parentId)) {
+        mesh.parent = this.meshes.get(def.parentId)!;
+      }
+      this.meshes.set(def.id, mesh);
+      return;
+    }
+
     const w = def.width  ?? 1;
     const h = def.height ?? 1;
     const d = def.depth  ?? 1;
@@ -329,6 +348,11 @@ export class BabylonSceneManager {
 
     this.applyMaterial(mesh, def.material ?? {});
     this.applyTransform(mesh, def);
+
+    // Parent-child grouping
+    if (def.parentId && this.meshes.has(def.parentId)) {
+      mesh.parent = this.meshes.get(def.parentId)!;
+    }
     this.meshes.set(def.id, mesh);
   }
 
@@ -457,14 +481,30 @@ export class BabylonSceneManager {
 
   animateObject(
     id: string,
-    property: 'position' | 'rotation' | 'scale',
-    to: Vec3,
+    property: string,
+    to: Vec3 | number | string,
     duration: number,
     easing: string,
     loop: boolean,
   ): void {
     const mesh = this.meshes.get(id);
     if (!mesh) return;
+
+    // Material property animations (emissiveIntensity, opacity, color)
+    if (property.startsWith('material.')) {
+      const matProp = property.split('.')[1];
+      const mat = mesh.material as import('@babylonjs/core').PBRMaterial | null;
+      if (!mat) return;
+      // Simple immediate set for Babylon (no per-frame tween for material yet)
+      if (matProp === 'emissiveIntensity' && typeof to === 'number') {
+        mat.emissiveIntensity = to;
+      } else if (matProp === 'opacity' && typeof to === 'number') {
+        mat.alpha = to;
+      } else if (matProp === 'color' && typeof to === 'string') {
+        mat.emissiveColor = hexToColor3(to);
+      }
+      return;
+    }
 
     // Stop only the animation for this specific property (not all animations on mesh)
     const animKey = `${id}_${property}`;
@@ -533,6 +573,93 @@ export class BabylonSceneManager {
         this.shadowGen.getShadowMap()!.refreshRate = env.shadows ? 1 : 0;
       }
     }
+
+    // ── Dynamic post-processing via DefaultRenderingPipeline ──
+    if (env.bloom || env.chromaticAberration || env.vignette) {
+      if (!this.pipeline) {
+        this.pipeline = new DefaultRenderingPipeline('default', true, this.scene, [this.camera]);
+      }
+      const p = this.pipeline;
+      if (env.bloom) {
+        p.bloomEnabled   = true;
+        p.bloomWeight    = env.bloom.strength ?? 0.4;
+        p.bloomThreshold = env.bloom.threshold ?? 0.8;
+        p.bloomKernel    = Math.round((env.bloom.radius ?? 0.4) * 128);
+      }
+      if (env.chromaticAberration) {
+        p.chromaticAberrationEnabled = true;
+        p.chromaticAberration.aberrationAmount = env.chromaticAberration.offset ?? 0.5;
+      }
+      if (env.vignette) {
+        p.imageProcessingEnabled = true;
+        p.imageProcessing.vignetteEnabled  = true;
+        p.imageProcessing.vignetteWeight   = env.vignette.darkness ?? 0.5;
+        p.imageProcessing.vignetteCameraFov = env.vignette.offset ?? 0.3;
+      }
+    }
+  }
+
+  // ── Particles ──────────────────────────────────────────────────────────────
+
+  createParticles(def: ParticleDef): void {
+    const count  = def.count ?? 200;
+    const spread = def.spread ?? { x: 10, y: 10, z: 10 };
+    const size   = def.size ?? 0.1;
+    const color  = def.color ?? '#ffffff';
+    const opacity = def.opacity ?? 0.8;
+
+    // Use a custom mesh with thin instances for point particles
+    const base = MeshBuilder.CreatePlane(`particles_${def.id}`, { size }, this.scene);
+    base.billboardMode = Mesh.BILLBOARDMODE_ALL;
+    const mat = new StandardMaterial(`pmat_${def.id}`, this.scene);
+    const c = hexToColor3(color);
+    mat.diffuseColor = c;
+    mat.emissiveColor = def.emissive ? hexToColor3(def.emissive) : c;
+    mat.alpha = opacity;
+    mat.disableLighting = true;
+    base.material = mat;
+
+    // Create thin instances for performance
+    const pos = def.position ?? { x: 0, y: 0, z: 0 };
+    const matrices: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const x = pos.x + (Math.random() - 0.5) * spread.x;
+      const y = pos.y + (Math.random() - 0.5) * spread.y;
+      const z = pos.z + (Math.random() - 0.5) * spread.z;
+      // 4x4 identity matrix with translation
+      matrices.push(
+        size, 0, 0, 0,
+        0, size, 0, 0,
+        0, 0, size, 0,
+        x, y, z, 1,
+      );
+    }
+    const buf = new Float32Array(matrices);
+    base.thinInstanceSetBuffer('matrix', buf, 16);
+    base.thinInstanceCount = count;
+
+    this.particles.set(def.id, { pcs: null as any, mesh: base as any, def });
+  }
+
+  updateParticles(update: Partial<ParticleDef> & { id: string }): void {
+    const entry = this.particles.get(update.id);
+    if (!entry) return;
+    const mesh = entry.mesh as any;
+    const mat = mesh.material as StandardMaterial;
+    if (update.color) {
+      const c = hexToColor3(update.color);
+      mat.diffuseColor = c;
+      mat.emissiveColor = c;
+    }
+    if (update.opacity !== undefined) mat.alpha = update.opacity;
+    Object.assign(entry.def, update);
+  }
+
+  deleteParticles(id: string): void {
+    const entry = this.particles.get(id);
+    if (!entry) return;
+    entry.mesh.dispose();
+    this.particles.delete(id);
   }
 
   // ── Full scene rebuild ────────────────────────────────────────────────────────
@@ -540,6 +667,7 @@ export class BabylonSceneManager {
   loadScene(state: SceneState): void {
     for (const id of [...this.meshes.keys()]) this.deleteObject(id);
     for (const id of [...this.lights.keys()])  this.deleteLight(id);
+    for (const id of [...this.particles.keys()]) this.deleteParticles(id);
     this.tweens.clear();
     this.animatables.clear();
 
@@ -547,6 +675,7 @@ export class BabylonSceneManager {
     if (state.camera)      this.setCamera(state.camera);
     for (const light  of Object.values(state.lights  ?? {})) this.createLight(light);
     for (const object of Object.values(state.objects ?? {})) this.createObject(object);
+    for (const p of Object.values(state.particles ?? {})) this.createParticles(p);
   }
 
   // ── Screenshot ────────────────────────────────────────────────────────────────

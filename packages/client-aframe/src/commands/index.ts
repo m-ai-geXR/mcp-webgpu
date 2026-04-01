@@ -5,6 +5,7 @@ import {
   SceneLight,
   SceneCamera,
   EnvironmentDef,
+  ParticleDef,
   Vec3,
 } from '../types.js';
 
@@ -55,13 +56,13 @@ export function dispatch(
     case 'animateObject': {
       const { id, property, to, duration, easing, loop } = cmd as {
         id: string;
-        property: 'position' | 'rotation' | 'scale';
-        to: Vec3;
+        property: string;
+        to: Vec3 | number | string;
         duration?: number;
         easing?: string;
         loop?: boolean;
       };
-      scene.animateObject(id, property, to, duration ?? 1, easing ?? 'linear', loop ?? false);
+      scene.animateObject(id, property as any, to as Vec3, duration ?? 1, easing ?? 'linear', loop ?? false);
       break;
     }
     case 'stopAnimation':
@@ -72,6 +73,17 @@ export function dispatch(
       scene.setEnvironment(cmd as unknown as EnvironmentDef);
       break;
 
+    // ── Particles ────────────────────────────────────────────────────────────
+    case 'createParticles':
+      scene.createParticles(cmd as unknown as ParticleDef);
+      break;
+    case 'updateParticles':
+      scene.updateParticles(cmd as unknown as Partial<ParticleDef> & { id: string });
+      break;
+    case 'deleteParticles':
+      scene.deleteParticles(cmd['id'] as string);
+      break;
+
     case 'loadScene': {
       const state = (cmd['state'] ?? cmd) as SceneState;
       scene.loadScene(state);
@@ -79,8 +91,8 @@ export function dispatch(
       if (state.animations) {
         for (const anim of Object.values(state.animations)) {
           scene.animateObject(
-            anim.id, anim.property as 'position' | 'rotation' | 'scale',
-            anim.to, anim.duration, anim.easing ?? 'linear', anim.loop,
+            anim.id, anim.property as any,
+            anim.to as Vec3, anim.duration, anim.easing ?? 'linear', anim.loop,
           );
         }
       }

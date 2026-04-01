@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import {
   SceneObject, SceneLight, SceneCamera, EnvironmentDef,
-  SceneState, ActiveAnimation,
+  SceneState, ActiveAnimation, ParticleDef,
 } from '../types.js';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
@@ -14,6 +14,7 @@ export interface SceneStore {
   // Scene data
   objects:     Record<string, SceneObject>;
   lights:      Record<string, SceneLight>;
+  particles:   Record<string, ParticleDef>;
   camera:      Partial<SceneCamera>;
   environment: Partial<EnvironmentDef>;
   animations:  Record<string, ActiveAnimation>;
@@ -37,6 +38,11 @@ export interface SceneStore {
   setCamera:      (cam: Partial<SceneCamera>) => void;
   setEnvironment: (env: Partial<EnvironmentDef>) => void;
 
+  // Particles
+  createParticles: (p: ParticleDef) => void;
+  updateParticles: (p: Partial<ParticleDef> & { id: string }) => void;
+  deleteParticles: (id: string) => void;
+
   // Full scene reload
   loadScene: (state: SceneState) => void;
 
@@ -55,6 +61,7 @@ export interface SceneStore {
 export const useSceneStore = create<SceneStore>((set, get) => ({
   objects:     {},
   lights:      {},
+  particles:   {},
   camera:      { fov: 60, near: 0.1, far: 2000 },
   environment: { background: '#1a1a2e' },
   animations:  {},
@@ -97,10 +104,25 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
 
   setEnvironment: (env) => set((s) => ({ environment: { ...s.environment, ...env } })),
 
-  // ── Full scene reload ─────────────────────────────────────────────────────
+  // ── Particles ────────────────────────────────────────────────────────
+  createParticles: (p) => set((s) => ({ particles: { ...s.particles, [p.id]: p } })),
+
+  updateParticles: (p) => set((s) => {
+    const existing = s.particles[p.id];
+    if (!existing) return s;
+    return { particles: { ...s.particles, [p.id]: { ...existing, ...p } } };
+  }),
+
+  deleteParticles: (id) => set((s) => {
+    const { [id]: _, ...rest } = s.particles;
+    return { particles: rest };
+  }),
+
+  // ── Full scene reload ─────────────────────────────────────────────────
   loadScene: (state) => set(() => ({
     objects:     state.objects     ?? {},
     lights:      state.lights      ?? {},
+    particles:   (state as any).particles ?? {},
     camera:      state.camera      ?? {},
     environment: state.environment ?? {},
     animations: {},

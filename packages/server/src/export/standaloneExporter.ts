@@ -37,6 +37,9 @@ canvas{display:block;width:100vw;height:100vh}
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 // ── Scene state (embedded at export time) ──
 const STATE = ${sceneJson};
@@ -159,9 +162,17 @@ for (const l of Object.values(STATE.lights??{})) {
 
 // ── Build objects ──
 for (const obj of Object.values(STATE.objects??{})) {
-  if (obj.type === 'gltf' && obj.url) continue; // GLTF needs loader, skip for standalone
+  if (obj.type === 'gltf' && obj.url) continue;
 
-  const mesh = new THREE.Mesh(buildGeometry(obj), buildMaterial(obj.material));
+  let mesh;
+  if (obj.type === 'line' && obj.points && obj.points.length >= 2) {
+    const pts = obj.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+    const geom = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({color: obj.material?.color ?? '#ffffff'});
+    mesh = new THREE.Line(geom, mat);
+  } else {
+    mesh = new THREE.Mesh(buildGeometry(obj), buildMaterial(obj.material));
+  }
   mesh.name = obj.id;
   if(obj.position) mesh.position.set(obj.position.x,obj.position.y,obj.position.z);
   if(obj.rotation) mesh.rotation.set(toRad(obj.rotation.x),toRad(obj.rotation.y),toRad(obj.rotation.z));
@@ -169,8 +180,39 @@ for (const obj of Object.values(STATE.objects??{})) {
   mesh.castShadow = obj.castShadow !== false;
   mesh.receiveShadow = obj.receiveShadow !== false;
   if(obj.visible === false) mesh.visible = false;
-  scene.add(mesh);
+
+  // parentId grouping
+  if (obj.parentId && objects.has(obj.parentId)) {
+    objects.get(obj.parentId).add(mesh);
+  } else {
+    scene.add(mesh);
+  }
   objects.set(obj.id, mesh);
+}
+
+// ── Build particles ──
+for (const p of Object.values(STATE.particles??{})) {
+  const count = p.count ?? 200;
+  const spread = p.spread ?? {x:10,y:10,z:10};
+  const pos = p.position ?? {x:0,y:0,z:0};
+  const geom = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    positions[i*3]   = pos.x + (Math.random()-0.5)*spread.x;
+    positions[i*3+1] = pos.y + (Math.random()-0.5)*spread.y;
+    positions[i*3+2] = pos.z + (Math.random()-0.5)*spread.z;
+  }
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    size: p.size ?? 0.1,
+    color: new THREE.Color(p.color ?? '#ffffff'),
+    transparent: true,
+    opacity: p.opacity ?? 0.8,
+    sizeAttenuation: p.sizeAttenuation !== false,
+    blending: p.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  scene.add(new THREE.Points(geom, mat));
 }
 
 // ── Animations ──
@@ -206,6 +248,21 @@ for (const anim of Object.values(STATE.animations??{})) {
   });
 }
 
+// ── Post-processing (bloom) ──
+let composer = null;
+const env = STATE.environment ?? {};
+if (env.bloom) {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    env.bloom.strength ?? 0.4,
+    env.bloom.radius ?? 0.4,
+    env.bloom.threshold ?? 0.8,
+  );
+  composer.addPass(bloom);
+}
+
 // ── Render loop ──
 function tick() {
   requestAnimationFrame(tick);
@@ -222,7 +279,7 @@ function tick() {
   }
 
   controls.update();
-  renderer.render(scene, camera);
+  if (composer) { composer.render(); } else { renderer.render(scene, camera); }
 }
 tick();
 
@@ -231,6 +288,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth,window.innerHeight);
+  if (composer) composer.setSize(window.innerWidth,window.innerHeight);
 });
 </script>
 </body>

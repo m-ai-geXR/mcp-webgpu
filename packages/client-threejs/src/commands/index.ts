@@ -1,5 +1,5 @@
 import { SceneManager } from '../scene.js';
-import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, AnimationDef, Vec3 } from '../types.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, AnimationDef, ParticleDef, Vec3 } from '../types.js';
 
 /** Dispatch a raw command (from the server) to the SceneManager. */
 export function dispatch(
@@ -60,8 +60,8 @@ export function dispatch(
     case 'animateObject': {
       const { id, property, to, duration, easing, loop } = cmd as {
         id: string;
-        property: 'position' | 'rotation' | 'scale';
-        to: Vec3;
+        property: string;
+        to: Vec3 | number | string;
         duration?: number;
         easing?: 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
         loop?: boolean;
@@ -87,7 +87,7 @@ export function dispatch(
       if (state.animations) {
         for (const anim of Object.values(state.animations)) {
           scene.animateObject(
-            anim.id, anim.property as 'position' | 'rotation' | 'scale',
+            anim.id, anim.property,
             anim.to, anim.duration, (anim.easing as 'linear' | 'easeIn' | 'easeOut' | 'easeInOut') ?? 'linear',
             anim.loop, currentTime,
           );
@@ -95,6 +95,19 @@ export function dispatch(
       }
       break;
     }
+
+    // ── Particles ────────────────────────────────────────────────
+    case 'createParticles':
+      scene.createParticles(cmd as unknown as ParticleDef);
+      break;
+
+    case 'updateParticles':
+      scene.updateParticles(cmd as unknown as Partial<ParticleDef> & { id: string });
+      break;
+
+    case 'deleteParticles':
+      scene.deleteParticles(cmd['id'] as string);
+      break;
 
     // ── Screenshot ───────────────────────────────────────────────
     case 'takeScreenshot': {

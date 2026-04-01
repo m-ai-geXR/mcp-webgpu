@@ -11,9 +11,13 @@ import {
   SceneCamera,
   EnvironmentDef,
   SceneState,
+  ParticleDef,
   Vec3,
 } from './types.js';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 function vec3ToStr(v: Vec3 | string): string {
   if (typeof v === 'string') return v;
@@ -25,7 +29,10 @@ void toRad; // unused in A-Frame (uses degrees directly)
 export class AFrameSceneManager {
   private objects = new Map<string, HTMLElement>();
   private lights  = new Map<string, HTMLElement>();
+  private particles = new Map<string, { points: THREE.Points; def: ParticleDef }>();
   private scene: Element;
+  private bloomPass: UnrealBloomPass | null = null;
+  private composer: EffectComposer | null = null;
 
   constructor() {
     this.scene = document.querySelector('a-scene')!;
@@ -129,6 +136,26 @@ export class AFrameSceneManager {
 
     let el: HTMLElement;
 
+    if (def.type === 'line' && def.points && def.points.length >= 2) {
+      // Line geometry via raw THREE.js on an entity
+      el = this.entity();
+      el.setAttribute('id', def.id);
+      this.applyTransform(el, def);
+      this.scene.appendChild(el);
+      this.objects.set(def.id, el);
+      // Build THREE.Line and attach to entity object3D
+      requestAnimationFrame(() => {
+        const obj3d = (el as any).object3D as THREE.Object3D;
+        if (!obj3d) return;
+        const geom = new THREE.BufferGeometry().setFromPoints(
+          def.points!.map((p: Vec3) => new THREE.Vector3(p.x, p.y, p.z)),
+        );
+        const mat = new THREE.LineBasicMaterial({ color: def.material?.color ?? '#ffffff' });
+        obj3d.add(new THREE.Line(geom, mat));
+      });
+      return;
+    }
+
     if (def.type === 'gltf' && def.url) {
       el = this.entity();
       el.setAttribute('gltf-model', def.url);
@@ -142,7 +169,18 @@ export class AFrameSceneManager {
 
     el.setAttribute('id', def.id);
     this.applyTransform(el, def);
-    this.scene.appendChild(el);
+
+    // parentId grouping
+    if (def.parentId) {
+      const parent = this.objects.get(def.parentId);
+      if (parent) {
+        parent.appendChild(el);
+      } else {
+        this.scene.appendChild(el);
+      }
+    } else {
+      this.scene.appendChild(el);
+    }
     this.objects.set(def.id, el);
   }
 
@@ -289,6 +327,66 @@ export class AFrameSceneManager {
     el.removeAttribute('animation');
   }
 
+  // ── Particles ──────────────────────────────────────────────────────────────
+
+  createParticles(def: ParticleDef): void {
+    this.deleteParticles(def.id);
+    const count  = def.count ?? 200;
+    const spread = def.spread ?? { x: 10, y: 10, z: 10 };
+    const size   = def.size ?? 0.1;
+    const color  = def.color ?? '#ffffff';
+    const opacity = def.opacity ?? 0.8;
+    const pos = def.position ?? { x: 0, y: 0, z: 0 };
+
+    const geom = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3]     = pos.x + (Math.random() - 0.5) * spread.x;
+      positions[i * 3 + 1] = pos.y + (Math.random() - 0.5) * spread.y;
+      positions[i * 3 + 2] = pos.z + (Math.random() - 0.5) * spread.z;
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      size,
+      color: new THREE.Color(color),
+      transparent: true,
+      opacity,
+      sizeAttenuation: def.sizeAttenuation !== false,
+      blending: def.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    if (def.emissive) {
+      (mat as any).emissive = new THREE.Color(def.emissive);
+      (mat as any).emissiveIntensity = def.emissiveIntensity ?? 1;
+    }
+    const points = new THREE.Points(geom, mat);
+    // Add directly to the underlying Three.js scene
+    const aScene = this.scene as unknown as { object3D: THREE.Scene };
+    if (aScene.object3D) {
+      aScene.object3D.add(points);
+    }
+    this.particles.set(def.id, { points, def });
+  }
+
+  updateParticles(update: Partial<ParticleDef> & { id: string }): void {
+    const entry = this.particles.get(update.id);
+    if (!entry) return;
+    const mat = entry.points.material as THREE.PointsMaterial;
+    if (update.color)             mat.color.set(update.color);
+    if (update.opacity !== undefined) mat.opacity = update.opacity;
+    if (update.size !== undefined)    mat.size = update.size;
+    Object.assign(entry.def, update);
+  }
+
+  deleteParticles(id: string): void {
+    const entry = this.particles.get(id);
+    if (!entry) return;
+    entry.points.geometry.dispose();
+    (entry.points.material as THREE.PointsMaterial).dispose();
+    entry.points.removeFromParent();
+    this.particles.delete(id);
+  }
+
   // ── Environment ──────────────────────────────────────────────────────────────
 
   setEnvironment(env: EnvironmentDef): void {
@@ -299,6 +397,33 @@ export class AFrameSceneManager {
     if (env.fog) {
       scene.setAttribute('fog', `type: linear; color: ${env.fog.color}; near: ${env.fog.near}; far: ${env.fog.far}`);
     }
+
+    // ── Post-processing (bloom) via Three.js composer ──
+    if (env.bloom) {
+      const aScene = this.scene as unknown as { renderer: THREE.WebGLRenderer; object3D: THREE.Scene };
+      if (aScene.renderer && aScene.object3D) {
+        if (!this.composer) {
+          const canvas = aScene.renderer.domElement;
+          this.composer = new EffectComposer(aScene.renderer);
+          const cam = document.getElementById('main-camera');
+          const threeCamera = cam ? (cam as any).object3DMap?.camera as THREE.Camera : null;
+          if (threeCamera) {
+            this.composer.addPass(new RenderPass(aScene.object3D, threeCamera));
+          }
+          this.bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(canvas.width, canvas.height),
+            env.bloom.strength ?? 0.4,
+            env.bloom.radius ?? 0.4,
+            env.bloom.threshold ?? 0.8,
+          );
+          this.composer.addPass(this.bloomPass);
+        } else if (this.bloomPass) {
+          this.bloomPass.strength  = env.bloom.strength ?? 0.4;
+          this.bloomPass.radius    = env.bloom.radius ?? 0.4;
+          this.bloomPass.threshold = env.bloom.threshold ?? 0.8;
+        }
+      }
+    }
   }
 
   // ── Full scene rebuild ────────────────────────────────────────────────────────
@@ -306,11 +431,13 @@ export class AFrameSceneManager {
   loadScene(state: SceneState): void {
     for (const id of [...this.objects.keys()]) this.deleteObject(id);
     for (const id of [...this.lights.keys()])  this.deleteLight(id);
+    for (const id of [...this.particles.keys()]) this.deleteParticles(id);
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);
     for (const light  of Object.values(state.lights  ?? {})) this.createLight(light);
     for (const object of Object.values(state.objects ?? {})) this.createObject(object);
+    for (const p of Object.values(state.particles ?? {})) this.createParticles(p);
   }
 
   // ── Screenshot ────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import {
   SceneCamera,
   EnvironmentDef,
   AnimationDef,
+  ParticleDef,
   MaterialDef,
   Vec3,
 } from '../types.js';
@@ -14,6 +15,7 @@ import { UndoStack } from './UndoStack.js';
 const DEFAULT_STATE: SceneState = {
   objects: {},
   animations: {},
+  particles: {},
   lights: {
     'ambient-default': {
       id: 'ambient-default',
@@ -229,6 +231,7 @@ export class SceneStateManager {
     this.snapshot();
     this.state.objects = {};
     this.state.animations = {};
+    this.state.particles = {};
     this.state.lights = this.clone(DEFAULT_STATE.lights);
   }
 
@@ -269,5 +272,60 @@ export class SceneStateManager {
 
   removeObjectAnimations(objectId: string): void {
     this.removeAnimation(objectId);
+  }
+
+  // ─── Particles ─────────────────────────────────────────────────────────────
+
+  createParticles(params: {
+    id?: string;
+    position?: Partial<Vec3>;
+    count?: number;
+    spread?: Partial<Vec3>;
+    size?: number;
+    color?: string;
+    emissive?: string;
+    emissiveIntensity?: number;
+    opacity?: number;
+    speed?: number;
+    drift?: Partial<Vec3>;
+    sizeAttenuation?: boolean;
+    twinkle?: boolean;
+    blending?: 'additive' | 'normal';
+  }): ParticleDef {
+    this.snapshot();
+    const id = params.id ?? `particles-${uuidv4().slice(0, 8)}`;
+    const def: ParticleDef = {
+      id,
+      position: { x: 0, y: 0, z: 0, ...(params.position ?? {}) },
+      count: params.count ?? 500,
+      spread: { x: 10, y: 10, z: 10, ...(params.spread ?? {}) },
+      size: params.size ?? 0.1,
+      color: params.color ?? '#ffffff',
+      emissive: params.emissive,
+      emissiveIntensity: params.emissiveIntensity,
+      opacity: params.opacity ?? 0.8,
+      speed: params.speed ?? 0,
+      drift: params.drift ? { x: 0, y: 0, z: 0, ...params.drift } : undefined,
+      sizeAttenuation: params.sizeAttenuation ?? true,
+      twinkle: params.twinkle ?? false,
+      blending: params.blending ?? 'additive',
+    };
+    if (!this.state.particles) this.state.particles = {};
+    this.state.particles[id] = def;
+    return this.clone(def);
+  }
+
+  updateParticles(id: string, properties: Partial<ParticleDef>): ParticleDef | null {
+    if (!this.state.particles?.[id]) return null;
+    this.snapshot();
+    Object.assign(this.state.particles[id], properties);
+    return this.clone(this.state.particles[id]);
+  }
+
+  deleteParticles(id: string): boolean {
+    if (!this.state.particles?.[id]) return false;
+    this.snapshot();
+    delete this.state.particles[id];
+    return true;
   }
 }

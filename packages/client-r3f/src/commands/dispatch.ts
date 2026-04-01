@@ -5,7 +5,7 @@
  * message-level `type: 'command'` field, so we map it back here.
  */
 import { useSceneStore } from '../store/sceneStore.js';
-import { ActiveAnimation, AnimationDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
+import { ActiveAnimation, AnimationDef, ParticleDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
 
 type Cmd = Record<string, unknown>;
 
@@ -57,20 +57,45 @@ export function dispatch(cmd: Cmd): string | null {
     case 'animateObject': {
       const obj = store.objects[cmd.id as string];
       if (!obj) break;
-      const prop = cmd.property as 'position' | 'rotation' | 'scale';
-      const from = obj[prop] ?? { x: 0, y: 0, z: 0 };
-      const to   = cmd.to as { x: number; y: number; z: number };
-      const anim: ActiveAnimation = {
-        id:        cmd.id       as string,
-        property:  prop,
-        fromX: (from as {x:number}).x, fromY: (from as {y:number}).y, fromZ: (from as {z:number}).z,
-        toX: to.x,  toY: to.y,   toZ: to.z,
-        startTime: performance.now(),
-        duration:  ((cmd.duration as number) ?? 1) * 1000,
-        easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'linear',
-        loop:      (cmd.loop     as boolean) ?? false,
-      };
-      store.startAnimation(anim);
+      const prop = cmd.property as string;
+      if (prop.startsWith('material.')) {
+        // Material animation — store scalar/color values
+        const mesh = obj;
+        const mat = mesh.material;
+        const subProp = prop.split('.')[1];
+        const anim: ActiveAnimation = {
+          id:        cmd.id as string,
+          property:  prop,
+          fromX: 0, fromY: 0, fromZ: 0,
+          toX: 0, toY: 0, toZ: 0,
+          startTime: performance.now(),
+          duration:  ((cmd.duration as number) ?? 1) * 1000,
+          easing:    (cmd.easing as ActiveAnimation['easing']) ?? 'linear',
+          loop:      (cmd.loop as boolean) ?? false,
+        };
+        if (subProp === 'emissiveIntensity' || subProp === 'opacity') {
+          anim.fromScalar = (mat as any)?.[subProp] ?? (subProp === 'opacity' ? 1 : 0);
+          anim.toScalar = cmd.to as number;
+        } else if (subProp === 'color') {
+          anim.fromColor = mat?.color ?? '#ffffff';
+          anim.toColor = cmd.to as string;
+        }
+        store.startAnimation(anim);
+      } else {
+        const from = obj[prop as 'position' | 'rotation' | 'scale'] ?? { x: 0, y: 0, z: 0 };
+        const to   = cmd.to as { x: number; y: number; z: number };
+        const anim: ActiveAnimation = {
+          id:        cmd.id       as string,
+          property:  prop,
+          fromX: (from as {x:number}).x, fromY: (from as {y:number}).y, fromZ: (from as {z:number}).z,
+          toX: to.x,  toY: to.y,   toZ: to.z,
+          startTime: performance.now(),
+          duration:  ((cmd.duration as number) ?? 1) * 1000,
+          easing:    (cmd.easing   as ActiveAnimation['easing']) ?? 'linear',
+          loop:      (cmd.loop     as boolean) ?? false,
+        };
+        store.startAnimation(anim);
+      }
       break;
     }
     case 'stopAnimation':
@@ -111,7 +136,18 @@ export function dispatch(cmd: Cmd): string | null {
 
     // ── Clear scene ───────────────────────────────────────────────────────────
     case 'clearScene':
-      store.loadScene({ objects: {}, lights: {}, camera: {}, environment: {} } as SceneState);
+      store.loadScene({ objects: {}, lights: {}, particles: {}, camera: {}, environment: {} } as SceneState);
+      break;
+
+    // ── Particles ────────────────────────────────────────────────────────
+    case 'createParticles':
+      store.createParticles(cmd as unknown as ParticleDef);
+      break;
+    case 'updateParticles':
+      store.updateParticles(cmd as unknown as Partial<ParticleDef> & { id: string });
+      break;
+    case 'deleteParticles':
+      store.deleteParticles(cmd.id as string);
       break;
 
     // ── Screenshot ────────────────────────────────────────────────────────────

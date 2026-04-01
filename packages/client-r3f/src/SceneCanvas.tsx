@@ -7,17 +7,79 @@
  */
 import { useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
+import { OrbitControls, useGLTF, Environment, Line } from '@react-three/drei';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { createXRStore, XR } from '@react-three/xr';
 import * as THREE from 'three';
 import { useSceneStore } from './store/sceneStore.js';
-import { SceneObject, SceneLight } from './types.js';
+import { SceneObject, SceneLight, ParticleDef } from './types.js';
 import { VRChatPanel } from './vr/VRChatPanel.js';
 
 // ── XR store (shared with App.tsx for "Enter VR" button) ──────────────────
 export const xrStore = createXRStore();
+
+// ── Particle system component ──────────────────────────────────────────────
+
+function ParticleSystem({ def }: { def: ParticleDef }) {
+  const ref = useRef<THREE.Points>(null);
+
+  const { geometry } = useMemo(() => {
+    const positions = new Float32Array(def.count * 3);
+    const a = new Float32Array(def.count);
+    for (let i = 0; i < def.count; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 2 * def.spread.x;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * def.spread.y;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 2 * def.spread.z;
+      a[i] = 1;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('alpha', new THREE.BufferAttribute(a, 1));
+    return { geometry: geo, alphas: a };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [def.id, def.count]);
+
+  useFrame(() => {
+    if (!ref.current) return;
+    const geo = ref.current.geometry;
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    if (def.speed && def.drift) {
+      const dt = 0.016;
+      const dx = def.drift.x * def.speed * dt;
+      const dy = def.drift.y * def.speed * dt;
+      const dz = def.drift.z * def.speed * dt;
+      for (let i = 0; i < pos.count; i++) {
+        pos.setXYZ(i, pos.getX(i) + dx, pos.getY(i) + dy, pos.getZ(i) + dz);
+        if (Math.abs(pos.getX(i)) > def.spread.x) pos.setX(i, -pos.getX(i));
+        if (Math.abs(pos.getY(i)) > def.spread.y) pos.setY(i, -pos.getY(i));
+        if (Math.abs(pos.getZ(i)) > def.spread.z) pos.setZ(i, -pos.getZ(i));
+      }
+      pos.needsUpdate = true;
+    }
+    if (def.twinkle) {
+      const al = geo.getAttribute('alpha') as THREE.BufferAttribute;
+      if (al) {
+        for (let i = 0; i < al.count; i++) al.setX(i, 0.3 + Math.random() * 0.7);
+        al.needsUpdate = true;
+      }
+    }
+  });
+
+  return (
+    <points ref={ref} position={[def.position.x, def.position.y, def.position.z]} geometry={geometry}>
+      <pointsMaterial
+        size={def.size}
+        color={def.color}
+        transparent
+        opacity={def.opacity ?? 1}
+        sizeAttenuation={def.sizeAttenuation !== false}
+        blending={def.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
+  );
+}
 
 // ── Easing helpers ─────────────────────────────────────────────────────────
 
@@ -166,6 +228,23 @@ function SceneObjectMesh({
   const rot = obj.rotation ?? { x: 0, y: 0, z: 0 };
   const sc  = obj.scale    ?? { x: 1, y: 1, z: 1 };
 
+  if (obj.type === 'line' && obj.points && obj.points.length >= 2) {
+    const pts = obj.points.map((p: any) => [p.x, p.y, p.z] as [number, number, number]);
+    return (
+      <Line
+        ref={callbackRef as any}
+        points={pts}
+        color={obj.material?.color ?? '#00ffff'}
+        lineWidth={2}
+        transparent
+        opacity={obj.material?.opacity ?? 1}
+        position={[pos.x, pos.y, pos.z]}
+        rotation={[THREE.MathUtils.degToRad(rot.x), THREE.MathUtils.degToRad(rot.y), THREE.MathUtils.degToRad(rot.z)]}
+        scale={[sc.x, sc.y, sc.z]}
+      />
+    );
+  }
+
   if (obj.type === 'gltf' && obj.url) {
     return (
       <group
@@ -279,6 +358,7 @@ export function SceneCanvas({
 }) {
   const objects    = useSceneStore((s) => s.objects);
   const lights     = useSceneStore((s) => s.lights);
+  const particles  = useSceneStore((s) => s.particles);
   const env        = useSceneStore((s) => s.environment);
 
   // Mesh refs map — shared with AnimationTicker
@@ -345,6 +425,11 @@ export function SceneCanvas({
           <SceneObjectMesh key={o.id} obj={o} registerRef={registerRef} />
         ))}
 
+        {/* Particles */}
+        {Object.values(particles).map((p) => (
+          <ParticleSystem key={p.id} def={p} />
+        ))}
+
         {/* VR chat panel */}
         <VRChatPanel messages={vrMessages ?? []} />
 
@@ -357,9 +442,9 @@ export function SceneCanvas({
         {/* Post-processing effects */}
         <EffectComposer>
           <Bloom
-            luminanceThreshold={0.8}
+            luminanceThreshold={env.bloom?.threshold ?? 0.8}
             luminanceSmoothing={0.3}
-            intensity={0.4}
+            intensity={env.bloom?.strength ?? 0.4}
             mipmapBlur
           />
           <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

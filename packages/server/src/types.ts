@@ -25,7 +25,7 @@ export interface MaterialDef {
 
 export interface SceneObject {
   id: string;
-  /** box | sphere | cylinder | cone | torus | plane | capsule | gltf */
+  /** box | sphere | cylinder | cone | torus | plane | capsule | gltf | line */
   type: string;
   position: Vec3;
   /** Euler rotation in degrees */
@@ -45,6 +45,10 @@ export interface SceneObject {
   segments?: number;
   /** GLTF url */
   url?: string;
+  /** Line geometry: array of points for polyline */
+  points?: Vec3[];
+  /** Parent object id for grouping */
+  parentId?: string;
   [key: string]: unknown;
 }
 
@@ -82,11 +86,15 @@ export interface EnvironmentDef {
   shadows?: boolean;
   toneMapping?: 'none' | 'linear' | 'reinhard' | 'aces';
   exposure?: number;
+  bloom?: { strength: number; radius: number; threshold: number };
+  chromaticAberration?: { offset: number };
+  vignette?: { offset: number; darkness: number };
 }
 
 export interface SceneState {
   objects: Record<string, SceneObject>;
   lights: Record<string, SceneLight>;
+  particles: Record<string, ParticleDef>;
   camera: SceneCamera;
   environment: EnvironmentDef;
   animations?: Record<string, AnimationDef>;
@@ -94,11 +102,29 @@ export interface SceneState {
   timestamp?: number;
 }
 
+/** Particle system definition */
+export interface ParticleDef {
+  id: string;
+  position: Vec3;
+  count: number;
+  spread: Vec3;
+  size: number;
+  color: string;
+  emissive?: string;
+  emissiveIntensity?: number;
+  opacity?: number;
+  speed?: number;
+  drift?: Vec3;
+  sizeAttenuation?: boolean;
+  twinkle?: boolean;
+  blending?: 'additive' | 'normal';
+}
+
 /** Persistent animation definition — survives page reloads via loadScene. */
 export interface AnimationDef {
   id: string;
-  property: 'position' | 'rotation' | 'scale';
-  to: Vec3;
+  property: 'position' | 'rotation' | 'scale' | 'material.emissiveIntensity' | 'material.opacity' | 'material.color';
+  to: Vec3 | number | string;
   duration: number;  // seconds
   easing: string;
   loop: boolean;

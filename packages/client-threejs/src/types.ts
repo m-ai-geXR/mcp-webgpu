@@ -30,6 +30,8 @@ export interface SceneObject {
   depth?: number;
   radius?: number;
   url?: string;
+  points?: Vec3[];
+  parentId?: string;
   [key: string]: unknown;
 }
 
@@ -62,21 +64,43 @@ export interface EnvironmentDef {
   shadows?: boolean;
   toneMapping?: 'none' | 'linear' | 'reinhard' | 'aces';
   exposure?: number;
+  bloom?: { strength: number; radius: number; threshold: number };
+  chromaticAberration?: { offset: number };
+  vignette?: { offset: number; darkness: number };
 }
 
 export interface SceneState {
   objects: Record<string, SceneObject>;
   lights: Record<string, SceneLight>;
+  particles: Record<string, ParticleDef>;
   camera: SceneCamera;
   environment: EnvironmentDef;
   animations?: Record<string, AnimationDef>;
 }
 
+/** Particle system definition */
+export interface ParticleDef {
+  id: string;
+  position: Vec3;
+  count: number;
+  spread: Vec3;
+  size: number;
+  color: string;
+  emissive?: string;
+  emissiveIntensity?: number;
+  opacity?: number;
+  speed?: number;
+  drift?: Vec3;
+  sizeAttenuation?: boolean;
+  twinkle?: boolean;
+  blending?: 'additive' | 'normal';
+}
+
 /** Persistent animation definition sent by server in loadScene. */
 export interface AnimationDef {
   id: string;
-  property: 'position' | 'rotation' | 'scale';
-  to: Vec3;
+  property: string;
+  to: Vec3 | number | string;
   duration: number;  // seconds
   easing: string;
   loop: boolean;
@@ -84,9 +108,15 @@ export interface AnimationDef {
 
 export interface ActiveAnimation {
   id: string;
-  property: 'position' | 'rotation' | 'scale';
+  property: string;
   fromX: number; fromY: number; fromZ: number;
   toX: number;   toY: number;   toZ: number;
+  // For scalar animations (material.emissiveIntensity, material.opacity)
+  fromScalar?: number;
+  toScalar?: number;
+  // For color animations (material.color)
+  fromColor?: string;
+  toColor?: string;
   startTime: number;
   duration: number; // ms
   easing: 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
