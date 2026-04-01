@@ -46,6 +46,21 @@ export function App() {
     // WebSocket client
     wsRef.current = new WSClient(WS_URL, FRAMEWORK, {
       onCommand(cmd) {
+        const c = cmd as { action?: string; requestId?: string; code?: string };
+        if (c.action === 'executeScript') {
+          (async () => {
+            try {
+              // R3F shares the same Three.js underneath — expose via store
+              const THREE = await import('three');
+              const fn = new Function('THREE', `return (async () => { ${c.code} })();`);
+              const result = await fn(THREE);
+              wsRef.current?.sendScriptResult(c.requestId ?? '', result !== undefined ? String(result) : 'undefined');
+            } catch (e) {
+              wsRef.current?.sendScriptResult(c.requestId ?? '', '', (e as Error).message);
+            }
+          })();
+          return;
+        }
         dispatch(cmd as Record<string, unknown>);
       },
       onAIReply(message) {

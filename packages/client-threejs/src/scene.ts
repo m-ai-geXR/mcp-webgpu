@@ -14,6 +14,7 @@ import {
   SceneState,
   MaterialDef,
   ParticleDef,
+  BehaviorDef,
   Vec3,
   ActiveAnimation,
 } from './types.js';
@@ -39,6 +40,7 @@ export class SceneManager {
   private lights   = new Map<string, THREE.Light>();
   private particles = new Map<string, { points: THREE.Points; def: ParticleDef }>();
   private animations = new Map<string, ActiveAnimation>();
+  private behaviors = new Map<string, BehaviorDef>();
   private loader   = new THREE.TextureLoader();
   private composer: EffectComposer;
   private bloomPass!: UnrealBloomPass;
@@ -77,7 +79,8 @@ export class SceneManager {
     hemiLight.name = '__default_hemi';
     this.scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Warmer, more intense directional light (sun-like)
+    const dirLight = new THREE.DirectionalLight(0xFFF5E6, 1.2);  // warm white, increased from 0.8
     dirLight.name = '__default_dir';
     dirLight.position.set(5, 10, 7);
     dirLight.castShadow = true;
@@ -109,7 +112,7 @@ export class SceneManager {
       new THREE.Vector2(container.clientWidth, container.clientHeight),
       0.4,   // strength
       0.4,   // radius
-      0.85,  // threshold
+      0.5,   // threshold (lowered from 0.85 for more visible glow)
     );
     this.composer.addPass(this.bloomPass);
 
@@ -207,6 +210,60 @@ export class SceneManager {
             alphas.setX(i, 0.3 + Math.random() * 0.7);
           }
           alphas.needsUpdate = true;
+        }
+      }
+    }
+
+    // Tick behaviors
+    const timeSec = time / 1000;
+    for (const [, beh] of this.behaviors) {
+      const obj = this.objects.get(beh.objectId);
+      if (!obj) continue;
+      const p = beh.params;
+      const speed = (p.speed as number) ?? 1;
+      switch (beh.type) {
+        case 'spin': {
+          const axis = (p.axis as string) ?? 'y';
+          const delta = speed * 0.016;
+          if (axis === 'x') obj.rotation.x += delta;
+          else if (axis === 'z') obj.rotation.z += delta;
+          else obj.rotation.y += delta;
+          break;
+        }
+        case 'bob': {
+          const axis = (p.axis as string) ?? 'y';
+          const amp = (p.amplitude as number) ?? 0.5;
+          const baseY = (p._basePos as number) ?? obj.position[axis as 'x'|'y'|'z'];
+          if (p._basePos === undefined) (p as any)._basePos = baseY;
+          obj.position[axis as 'x'|'y'|'z'] = baseY + Math.sin(timeSec * speed) * amp;
+          break;
+        }
+        case 'orbit': {
+          const cx = (p.center as any)?.x ?? 0;
+          const cy = (p.center as any)?.y ?? obj.position.y;
+          const cz = (p.center as any)?.z ?? 0;
+          const rad = (p.radius as number) ?? 2;
+          obj.position.x = cx + Math.cos(timeSec * speed) * rad;
+          obj.position.z = cz + Math.sin(timeSec * speed) * rad;
+          obj.position.y = cy;
+          break;
+        }
+        case 'lookAt': {
+          const target = p.target as string;
+          if (target === 'camera') {
+            obj.lookAt(this.camera.position);
+          } else {
+            const t = this.objects.get(target);
+            if (t) obj.lookAt(t.position);
+          }
+          break;
+        }
+        case 'pulse': {
+          const min = (p.min as number) ?? 0.8;
+          const max = (p.max as number) ?? 1.2;
+          const s = min + (max - min) * (0.5 + 0.5 * Math.sin(timeSec * speed));
+          obj.scale.set(s, s, s);
+          break;
         }
       }
     }
@@ -518,6 +575,16 @@ export class SceneManager {
     this.particles.delete(id);
   }
 
+  // ─── Behaviors ────────────────────────────────────────────────
+
+  addBehavior(def: BehaviorDef): void {
+    this.behaviors.set(def.id, { ...def, params: { ...def.params } });
+  }
+
+  removeBehavior(id: string): void {
+    this.behaviors.delete(id);
+  }
+
   // ─── Post-processing ──────────────────────────────────────────
 
   updatePostProcessing(env: EnvironmentDef): void {
@@ -579,6 +646,19 @@ export class SceneManager {
     if (env.background !== undefined) {
       this.scene.background = new THREE.Color(env.background);
     }
+    // HDRI environment map for reflections and optionally background
+    if (env.hdriUrl) {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      new RGBELoader().load(env.hdriUrl, (hdrTexture) => {
+        const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
+        this.scene.environment = envMap;
+        if (env.skyType === 'hdri') {
+          this.scene.background = envMap;
+        }
+        hdrTexture.dispose();
+        pmrem.dispose();
+      });
+    }
     if (env.fog !== undefined) {
       if (env.fog) {
         this.scene.fog = new THREE.Fog(env.fog.color, env.fog.near, env.fog.far);
@@ -615,6 +695,7 @@ export class SceneManager {
     for (const id of [...this.lights.keys()])    this.deleteLight(id);
     for (const id of [...this.particles.keys()]) this.deleteParticles(id);
     this.animations.clear();
+    this.behaviors.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);
@@ -642,19 +723,35 @@ export class SceneManager {
     const w = def.width ?? 1, h = def.height ?? 1, d = def.depth ?? 1;
     const r = def.radius ?? 0.5;
     const seg = (def.segments as number | undefined) ?? 64;
+    const tr = (def as any).tubeRadius as number | undefined;
     switch (def.type) {
-      case 'sphere':   return new THREE.SphereGeometry(r, seg, seg);
-      case 'cylinder': return new THREE.CylinderGeometry((def.radiusTop as number | undefined) ?? r, (def.radiusBottom as number | undefined) ?? r, h, seg);
-      case 'cone':     return new THREE.ConeGeometry(r, h, seg);
-      case 'torus':    return new THREE.TorusGeometry(r, r * 0.4, 24, seg);
-      case 'plane':    return new THREE.PlaneGeometry(w, h);
-      case 'capsule':  return new THREE.CapsuleGeometry(r, h, 8, seg);
-      default:         return new THREE.BoxGeometry(w, h, d);
+      case 'sphere':       return new THREE.SphereGeometry(r, seg, seg);
+      case 'cylinder':     return new THREE.CylinderGeometry((def.radiusTop as number | undefined) ?? r, (def.radiusBottom as number | undefined) ?? r, h, seg);
+      case 'cone':         return new THREE.ConeGeometry(r, h, seg);
+      case 'torus':        return new THREE.TorusGeometry(r, tr ?? r * 0.4, 24, seg);
+      case 'plane':        return new THREE.PlaneGeometry(w, h);
+      case 'capsule':      return new THREE.CapsuleGeometry(r, h, 8, seg);
+      case 'torusKnot':    return new THREE.TorusKnotGeometry(r, tr ?? 0.2, seg, 16);
+      case 'ring':         return new THREE.RingGeometry((def as any).innerRadius ?? 0.3, r, seg);
+      case 'circle':       return new THREE.CircleGeometry(r, seg);
+      case 'dodecahedron':  return new THREE.DodecahedronGeometry(r, (def as any).detail ?? 0);
+      case 'icosahedron':   return new THREE.IcosahedronGeometry(r, (def as any).detail ?? 0);
+      case 'octahedron':    return new THREE.OctahedronGeometry(r, (def as any).detail ?? 0);
+      case 'tetrahedron':   return new THREE.TetrahedronGeometry(r, (def as any).detail ?? 0);
+      case 'tube': {
+        if (def.points && def.points.length >= 2) {
+          const pts = def.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+          const curve = new THREE.CatmullRomCurve3(pts);
+          return new THREE.TubeGeometry(curve, seg, tr ?? 0.2, 12, false);
+        }
+        return new THREE.BoxGeometry(w, h, d); // fallback
+      }
+      default:             return new THREE.BoxGeometry(w, h, d);
     }
   }
 
   private buildMaterial(def: MaterialDef): THREE.Material {
-    const color = def.color ?? '#4488ff';
+    const color = def.color ?? '#cccccc';  // neutral grey instead of blue
     const base = {
       color: new THREE.Color(color),
       wireframe: def.wireframe ?? false,
@@ -669,14 +766,17 @@ export class SceneManager {
       default: {
         const mat = new THREE.MeshStandardMaterial({
           ...base,
-          metalness: def.metalness ?? 0.1,
-          roughness: def.roughness ?? 0.7,
+          metalness: def.metalness ?? 0.3,  // increased from 0.1 for more realistic PBR
+          roughness: def.roughness ?? 0.6,  // slightly smoother (was 0.7)
           ...(def.emissive ? { emissive: new THREE.Color(def.emissive) } : {}),
           emissiveIntensity: def.emissiveIntensity ?? 1,
           envMap: this.envMap,
           envMapIntensity: 1.0,
         });
         if (def.textureUrl) mat.map = this.loader.load(def.textureUrl);
+        // Add normal map and roughness map support
+        if (def.normalMapUrl) mat.normalMap = this.loader.load(def.normalMapUrl);
+        if (def.roughnessMapUrl) mat.roughnessMap = this.loader.load(def.roughnessMapUrl);
         return mat;
       }
     }

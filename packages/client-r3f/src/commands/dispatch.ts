@@ -5,7 +5,7 @@
  * message-level `type: 'command'` field, so we map it back here.
  */
 import { useSceneStore } from '../store/sceneStore.js';
-import { ActiveAnimation, AnimationDef, ParticleDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
+import { ActiveAnimation, AnimationDef, ParticleDef, BehaviorDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
 
 type Cmd = Record<string, unknown>;
 
@@ -136,7 +136,7 @@ export function dispatch(cmd: Cmd): string | null {
 
     // ── Clear scene ───────────────────────────────────────────────────────────
     case 'clearScene':
-      store.loadScene({ objects: {}, lights: {}, particles: {}, camera: {}, environment: {} } as SceneState);
+      store.loadScene({ objects: {}, lights: {}, particles: {}, behaviors: {}, camera: {}, environment: {} } as SceneState);
       break;
 
     // ── Particles ────────────────────────────────────────────────────────
@@ -148,6 +148,14 @@ export function dispatch(cmd: Cmd): string | null {
       break;
     case 'deleteParticles':
       store.deleteParticles(cmd.id as string);
+      break;
+
+    // ── Behaviors ─────────────────────────────────────────────────────────────
+    case 'addBehavior':
+      store.addBehavior(cmd as unknown as BehaviorDef);
+      break;
+    case 'removeBehavior':
+      store.removeBehavior(cmd.id as string);
       break;
 
     // ── Screenshot ────────────────────────────────────────────────────────────

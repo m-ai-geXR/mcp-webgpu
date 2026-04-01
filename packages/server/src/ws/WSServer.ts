@@ -23,6 +23,12 @@ interface PendingScreenshot {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface PendingScript {
+  resolve: (result: string) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 interface ClientSession {
   id: string;
   ws: WebSocket;
@@ -39,6 +45,7 @@ export class WSServer {
   private stateManager!: SceneStateManager;
   private chatRelay!: ChatRelay;
   private pendingScreenshots = new Map<string, PendingScreenshot>();
+  private pendingScripts = new Map<string, PendingScript>();
 
   private adapters: Record<Framework, IFrameworkAdapter> = {
     threejs: new ThreeJSAdapter(),
@@ -190,6 +197,23 @@ export class WSServer {
         break;
       }
 
+      case 'script-result': {
+        const requestId = (msg as unknown as { requestId: string }).requestId;
+        const result = (msg as unknown as { result: string }).result;
+        const error = (msg as unknown as { error?: string }).error;
+        const pendingScript = this.pendingScripts.get(requestId);
+        if (pendingScript) {
+          clearTimeout(pendingScript.timer);
+          this.pendingScripts.delete(requestId);
+          if (error) {
+            pendingScript.reject(new Error(error));
+          } else {
+            pendingScript.resolve(result ?? 'undefined');
+          }
+        }
+        break;
+      }
+
       case 'ping': {
         ws.send(JSON.stringify({ type: 'pong' }));
         break;
@@ -306,6 +330,21 @@ export class WSServer {
 
       this.pendingScreenshots.set(requestId, { resolve, reject, timer });
       this.sendCommand({ action: 'takeScreenshot', requestId }, sessionId);
+    });
+  }
+
+  /** Execute a script in the browser; resolves with the return value as a string. */
+  async requestScript(code: string, sessionId?: string): Promise<string> {
+    if (!this.hasClients()) throw new Error('No browser client connected');
+    const requestId = uuidv4();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingScripts.delete(requestId);
+        reject(new Error('Script execution timed out (30 s)'));
+      }, 30_000);
+
+      this.pendingScripts.set(requestId, { resolve, reject, timer });
+      this.sendCommand({ action: 'executeScript', requestId, code }, sessionId);
     });
   }
 

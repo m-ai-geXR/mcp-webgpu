@@ -45,10 +45,16 @@ export interface SceneObject {
   segments?: number;
   /** GLTF url */
   url?: string;
-  /** Line geometry: array of points for polyline */
+  /** Line geometry: array of points for polyline or tube path */
   points?: Vec3[];
   /** Parent object id for grouping */
   parentId?: string;
+  /** Tube cross-section radius for torus/torusKnot/tube */
+  tubeRadius?: number;
+  /** Inner radius for ring geometry */
+  innerRadius?: number;
+  /** Subdivision detail for platonic solids */
+  detail?: number;
   [key: string]: unknown;
 }
 
@@ -83,6 +89,7 @@ export interface EnvironmentDef {
   fog?: { color: string; near: number; far: number };
   skyType?: 'color' | 'gradient' | 'hdri' | 'procedural';
   skyParams?: Record<string, unknown>;
+  hdriUrl?: string;
   shadows?: boolean;
   toneMapping?: 'none' | 'linear' | 'reinhard' | 'aces';
   exposure?: number;
@@ -91,10 +98,19 @@ export interface EnvironmentDef {
   vignette?: { offset: number; darkness: number };
 }
 
+/** Behavior definition — frame-tick based continuous effect attached to an object */
+export interface BehaviorDef {
+  id: string;
+  objectId: string;
+  type: 'spin' | 'bob' | 'orbit' | 'lookAt' | 'pulse';
+  params: Record<string, unknown>;
+}
+
 export interface SceneState {
   objects: Record<string, SceneObject>;
   lights: Record<string, SceneLight>;
   particles: Record<string, ParticleDef>;
+  behaviors: Record<string, BehaviorDef>;
   camera: SceneCamera;
   environment: EnvironmentDef;
   animations?: Record<string, AnimationDef>;
@@ -137,6 +153,7 @@ export type WSMessageType =
   | 'state-update'
   | 'user-chat'
   | 'screenshot'
+  | 'script-result'
   | 'command'
   | 'ai-reply'
   | 'ack'

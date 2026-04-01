@@ -76,6 +76,8 @@ whenReady(() => {
     onCommand: (cmd) => {
       dispatch(cmd, scene, (requestId, dataUrl) => {
         wsClient.sendScreenshot(requestId, dataUrl);
+      }, (requestId, result, error) => {
+        wsClient.sendScriptResult(requestId, result, error);
       });
     },
     onAIReply: (message) => {

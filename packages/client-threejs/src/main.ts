@@ -38,6 +38,8 @@ wsClient = new WSClient(WS_URL, FRAMEWORK, {
   onCommand: (cmd) => {
     dispatch(cmd, scene, performance.now(), (requestId, dataUrl) => {
       wsClient.sendScreenshot(requestId, dataUrl);
+    }, (requestId, result, error) => {
+      wsClient.sendScriptResult(requestId, result, error);
     });
   },
 

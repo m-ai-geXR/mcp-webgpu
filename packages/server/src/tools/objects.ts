@@ -35,8 +35,8 @@ export const objectTools: Tool[] = [
       properties: {
         type: {
           type: 'string',
-          enum: ['box', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'capsule', 'gltf', 'line'],
-          description: 'Geometry type. Use "line" for laser beams, neon streaks, trails.',
+          enum: ['box', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'capsule', 'gltf', 'line', 'torusKnot', 'ring', 'circle', 'dodecahedron', 'icosahedron', 'octahedron', 'tetrahedron', 'tube'],
+          description: 'Geometry type. Use "line" for laser beams/neon streaks. "tube" for 3D tubes along a path. Platonic solids: dodecahedron, icosahedron, octahedron, tetrahedron.',
         },
         id: { type: 'string', description: 'Optional custom id. Auto-generated if omitted.' },
         position: { ...vec3Schema, description: 'World position {x,y,z}. Default: origin.' },
@@ -47,11 +47,14 @@ export const objectTools: Tool[] = [
         height: { type: 'number', description: 'Box/cylinder height (default 1)' },
         depth: { type: 'number', description: 'Box depth (default 1)' },
         radius: { type: 'number', description: 'Sphere/cylinder/torus radius (default 0.5)' },
+        tubeRadius: { type: 'number', description: 'Tube cross-section radius for torus/torusKnot/tube (default 0.2)' },
+        innerRadius: { type: 'number', description: 'Inner radius for ring geometry (default 0.3)' },
+        detail: { type: 'number', description: 'Subdivision detail for platonic solids (default 0)' },
         url: { type: 'string', description: 'GLTF model URL (required for type=gltf)' },
         points: {
           type: 'array',
           items: vec3Schema,
-          description: 'Array of {x,y,z} points for line geometry. Required when type="line".',
+          description: 'Array of {x,y,z} points for line geometry or tube path. Required when type="line" or type="tube".',
         },
         parentId: { type: 'string', description: 'Parent object id for grouping. Child inherits parent transforms.' },
       },

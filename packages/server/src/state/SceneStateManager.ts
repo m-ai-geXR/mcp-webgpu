@@ -7,6 +7,7 @@ import {
   EnvironmentDef,
   AnimationDef,
   ParticleDef,
+  BehaviorDef,
   MaterialDef,
   Vec3,
 } from '../types.js';
@@ -16,6 +17,7 @@ const DEFAULT_STATE: SceneState = {
   objects: {},
   animations: {},
   particles: {},
+  behaviors: {},
   lights: {
     'ambient-default': {
       id: 'ambient-default',
@@ -232,6 +234,7 @@ export class SceneStateManager {
     this.state.objects = {};
     this.state.animations = {};
     this.state.particles = {};
+    this.state.behaviors = {};
     this.state.lights = this.clone(DEFAULT_STATE.lights);
   }
 
@@ -326,6 +329,28 @@ export class SceneStateManager {
     if (!this.state.particles?.[id]) return false;
     this.snapshot();
     delete this.state.particles[id];
+    return true;
+  }
+
+  // ─── Behaviors ─────────────────────────────────────────────────────────────
+
+  addBehavior(params: { id: string; objectId: string; type: BehaviorDef['type']; params?: Record<string, unknown> }): BehaviorDef {
+    this.snapshot();
+    const def: BehaviorDef = {
+      id: params.id,
+      objectId: params.objectId,
+      type: params.type,
+      params: params.params ?? {},
+    };
+    if (!this.state.behaviors) this.state.behaviors = {};
+    this.state.behaviors[def.id] = def;
+    return this.clone(def);
+  }
+
+  removeBehavior(id: string): boolean {
+    if (!this.state.behaviors?.[id]) return false;
+    this.snapshot();
+    delete this.state.behaviors[id];
     return true;
   }
 }

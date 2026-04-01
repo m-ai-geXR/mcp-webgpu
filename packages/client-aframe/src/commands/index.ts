@@ -6,6 +6,7 @@ import {
   SceneCamera,
   EnvironmentDef,
   ParticleDef,
+  BehaviorDef,
   Vec3,
 } from '../types.js';
 
@@ -13,6 +14,7 @@ export function dispatch(
   cmd: Record<string, unknown>,
   scene: AFrameSceneManager,
   sendScreenshot: (requestId: string, dataUrl: string) => void,
+  sendScriptResult?: (requestId: string, result: string, error?: string) => void,
 ): void {
   const action = cmd['action'] as string | undefined;
   if (!action) return;
@@ -84,6 +86,14 @@ export function dispatch(
       scene.deleteParticles(cmd['id'] as string);
       break;
 
+    // ── Behaviors ────────────────────────────────────────────────
+    case 'addBehavior':
+      scene.addBehavior(cmd as unknown as BehaviorDef);
+      break;
+    case 'removeBehavior':
+      scene.removeBehavior(cmd['id'] as string);
+      break;
+
     case 'loadScene': {
       const state = (cmd['state'] ?? cmd) as SceneState;
       scene.loadScene(state);
@@ -103,6 +113,29 @@ export function dispatch(
       const requestId = cmd['requestId'] as string;
       const dataUrl = scene.takeScreenshot();
       sendScreenshot(requestId, dataUrl);
+      break;
+    }
+
+    case 'executeScript': {
+      const requestId = cmd['requestId'] as string;
+      const code = cmd['code'] as string;
+      if (sendScriptResult) {
+        (async () => {
+          try {
+            const THREE = await import('three');
+            const sceneEl = document.querySelector('a-scene');
+            const threeScene = (sceneEl as any)?.object3D;
+            const camera = (sceneEl as any)?.camera;
+            const renderer = (sceneEl as any)?.renderer;
+            const fn = new Function('scene', 'camera', 'renderer', 'THREE',
+              `return (async () => { ${code} })();`);
+            const result = await fn(threeScene, camera, renderer, THREE);
+            sendScriptResult(requestId, result !== undefined ? String(result) : 'undefined');
+          } catch (e) {
+            sendScriptResult(requestId, '', (e as Error).message);
+          }
+        })();
+      }
       break;
     }
 

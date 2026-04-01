@@ -40,6 +40,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {RGBELoader} from 'three/addons/loaders/RGBELoader.js';
 
 // ── Scene state (embedded at export time) ──
 const STATE = ${sceneJson};
@@ -81,6 +82,20 @@ if (STATE.environment?.fog) {
   pmrem.dispose();
 }
 
+// ── HDRI environment map ──
+if (STATE.environment?.hdriUrl) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  new RGBELoader().load(STATE.environment.hdriUrl, (hdrTexture) => {
+    const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
+    scene.environment = envMap;
+    if (STATE.environment?.skyType === 'hdri') {
+      scene.background = envMap;
+    }
+    hdrTexture.dispose();
+    pmrem.dispose();
+  });
+}
+
 // ── Camera ──
 const cam = STATE.camera ?? {position:{x:6,y:5,z:6},target:{x:0,y:0,z:0},fov:60};
 const camera = new THREE.PerspectiveCamera(cam.fov??60,window.innerWidth/window.innerHeight,cam.near??0.1,cam.far??1000);
@@ -116,13 +131,29 @@ function buildMaterial(m) {
 
 function buildGeometry(def) {
   const w=def.width??1, h=def.height??1, d=def.depth??1, r=def.radius??0.5, seg=64;
+  const tr=def.tubeRadius, det=def.detail??0;
   switch(def.type){
     case'sphere':return new THREE.SphereGeometry(r,seg,seg);
     case'cylinder':return new THREE.CylinderGeometry(def.radiusTop??r,def.radiusBottom??r,h,seg);
     case'cone':return new THREE.ConeGeometry(r,h,seg);
-    case'torus':return new THREE.TorusGeometry(r,r*0.4,24,seg);
+    case'torus':return new THREE.TorusGeometry(r,tr??r*0.4,24,seg);
     case'plane':return new THREE.PlaneGeometry(w,h);
     case'capsule':return new THREE.CapsuleGeometry(r,h,8,seg);
+    case'torusKnot':return new THREE.TorusKnotGeometry(r,tr??0.2,seg,16);
+    case'ring':return new THREE.RingGeometry(def.innerRadius??0.3,r,seg);
+    case'circle':return new THREE.CircleGeometry(r,seg);
+    case'dodecahedron':return new THREE.DodecahedronGeometry(r,det);
+    case'icosahedron':return new THREE.IcosahedronGeometry(r,det);
+    case'octahedron':return new THREE.OctahedronGeometry(r,det);
+    case'tetrahedron':return new THREE.TetrahedronGeometry(r,det);
+    case'tube':{
+      if(def.points&&def.points.length>=2){
+        const pts=def.points.map(p=>new THREE.Vector3(p.x,p.y,p.z));
+        const curve=new THREE.CatmullRomCurve3(pts);
+        return new THREE.TubeGeometry(curve,seg,tr??0.2,12,false);
+      }
+      return new THREE.BoxGeometry(w,h,d);
+    }
     default:return new THREE.BoxGeometry(w,h,d);
   }
 }

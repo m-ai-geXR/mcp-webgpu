@@ -141,6 +141,67 @@ function AnimationTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<st
   return null;
 }
 
+// ── Behavior ticker ────────────────────────────────────────────────────────
+
+const behaviorBasePos = new Map<string, THREE.Vector3>();
+
+function BehaviorTicker({ meshRefs }: { meshRefs: React.MutableRefObject<Map<string, THREE.Object3D>> }) {
+  useFrame((_state, delta) => {
+    const { behaviors } = useSceneStore.getState();
+    const now = performance.now() / 1000;
+    for (const b of Object.values(behaviors)) {
+      const mesh = meshRefs.current.get(b.objectId);
+      if (!mesh) continue;
+
+      const p = b.params as Record<string, number>;
+      switch (b.type) {
+        case 'spin': {
+          const sx = (p.speedX ?? 0) * delta;
+          const sy = (p.speedY ?? 1) * delta;
+          const sz = (p.speedZ ?? 0) * delta;
+          mesh.rotation.x += sx;
+          mesh.rotation.y += sy;
+          mesh.rotation.z += sz;
+          break;
+        }
+        case 'bob': {
+          if (!behaviorBasePos.has(b.id)) behaviorBasePos.set(b.id, mesh.position.clone());
+          const base = behaviorBasePos.get(b.id)!;
+          const amplitude = p.amplitude ?? 0.5;
+          const speed = p.speed ?? 1;
+          mesh.position.y = base.y + Math.sin(now * speed) * amplitude;
+          break;
+        }
+        case 'orbit': {
+          const radius = p.radius ?? 3;
+          const speed = p.speed ?? 1;
+          const cx = p.centerX ?? 0;
+          const cz = p.centerZ ?? 0;
+          mesh.position.x = cx + Math.cos(now * speed) * radius;
+          mesh.position.z = cz + Math.sin(now * speed) * radius;
+          break;
+        }
+        case 'lookAt': {
+          const tx = p.targetX ?? 0;
+          const ty = p.targetY ?? 0;
+          const tz = p.targetZ ?? 0;
+          mesh.lookAt(tx, ty, tz);
+          break;
+        }
+        case 'pulse': {
+          const mn = p.min ?? 0.8;
+          const mx = p.max ?? 1.2;
+          const speed = p.speed ?? 1;
+          const s = mn + (mx - mn) * (0.5 + 0.5 * Math.sin(now * speed));
+          mesh.scale.set(s, s, s);
+          break;
+        }
+      }
+    }
+  });
+  return null;
+}
+
 // ── Screenshot capturer ────────────────────────────────────────────────────
 
 function ScreenshotCapturer({ onCapture }: { onCapture: (dataUrl: string) => void }) {
@@ -162,12 +223,12 @@ function ScreenshotCapturer({ onCapture }: { onCapture: (dataUrl: string) => voi
 
 function useMaterial(def: SceneObject['material']) {
   return useMemo(() => {
-    const color = def?.color ?? '#4488ff';
+    const color = def?.color ?? '#cccccc';  // neutral grey instead of blue
     return (
       <meshStandardMaterial
         color={color}
-        metalness={def?.metalness ?? 0.1}
-        roughness={def?.roughness ?? 0.7}
+        metalness={def?.metalness ?? 0.3}  // increased from 0.1 for more realistic PBR
+        roughness={def?.roughness ?? 0.6}  // slightly smoother (was 0.7)
         emissive={def?.emissive ?? '#000000'}
         emissiveIntensity={def?.emissiveIntensity ?? 1}
         opacity={def?.opacity ?? 1}
@@ -188,14 +249,31 @@ function ObjectGeometry({ obj }: { obj: SceneObject }) {
   const d = obj.depth  ?? 1;
   const r = obj.radius ?? 0.5;
 
+  const tr = (obj as any).tubeRadius as number | undefined;
+  const detail = (obj as any).detail as number | undefined;
   switch (obj.type) {
-    case 'sphere':   return <sphereGeometry     args={[r, 64, 64]} />;
-    case 'cylinder': return <cylinderGeometry   args={[r, r, h, 64]} />;
-    case 'cone':     return <coneGeometry       args={[r, h, 64]} />;
-    case 'torus':    return <torusGeometry      args={[r, r * 0.4, 24, 64]} />;
-    case 'plane':    return <planeGeometry      args={[w, h]} />;
-    case 'capsule':  return <capsuleGeometry    args={[r, h, 8, 32]} />;
-    default:         return <boxGeometry        args={[w, h, d]} />;
+    case 'sphere':       return <sphereGeometry     args={[r, 64, 64]} />;
+    case 'cylinder':     return <cylinderGeometry   args={[r, r, h, 64]} />;
+    case 'cone':         return <coneGeometry       args={[r, h, 64]} />;
+    case 'torus':        return <torusGeometry      args={[r, tr ?? r * 0.4, 24, 64]} />;
+    case 'plane':        return <planeGeometry      args={[w, h]} />;
+    case 'capsule':      return <capsuleGeometry    args={[r, h, 8, 32]} />;
+    case 'torusKnot':    return <torusKnotGeometry  args={[r, tr ?? 0.2, 64, 16]} />;
+    case 'ring':         return <ringGeometry       args={[(obj as any).innerRadius ?? 0.3, r, 64]} />;
+    case 'circle':       return <circleGeometry     args={[r, 64]} />;
+    case 'dodecahedron':  return <dodecahedronGeometry args={[r, detail ?? 0]} />;
+    case 'icosahedron':   return <icosahedronGeometry  args={[r, detail ?? 0]} />;
+    case 'octahedron':    return <octahedronGeometry   args={[r, detail ?? 0]} />;
+    case 'tetrahedron':   return <tetrahedronGeometry  args={[r, detail ?? 0]} />;
+    case 'tube': {
+      if (obj.points && obj.points.length >= 2) {
+        const pts = obj.points.map(p => new THREE.Vector3(p.x, p.y, p.z));
+        const curve = new THREE.CatmullRomCurve3(pts);
+        return <tubeGeometry args={[curve, 64, tr ?? 0.2, 12, false]} />;
+      }
+      return <boxGeometry args={[w, h, d]} />;
+    }
+    default:             return <boxGeometry        args={[w, h, d]} />;
   }
 }
 
@@ -413,7 +491,11 @@ export function SceneCanvas({
         />
 
         {/* Procedural IBL environment for PBR reflections */}
-        <Environment preset="studio" environmentIntensity={0.6} />
+        {env.hdriUrl ? (
+          <Environment files={env.hdriUrl} background={env.skyType === 'hdri'} />
+        ) : (
+          <Environment preset="studio" environmentIntensity={0.6} />
+        )}
 
         {/* Lights */}
         {Object.values(lights).map((l) => (
@@ -435,6 +517,9 @@ export function SceneCanvas({
 
         {/* Animation ticker (runs in useFrame, outside React re-renders) */}
         <AnimationTicker meshRefs={meshRefsMap} />
+
+        {/* Behavior ticker (spin, bob, orbit, lookAt, pulse) */}
+        <BehaviorTicker meshRefs={meshRefsMap} />
 
         {/* Screenshot capturer */}
         <ScreenshotCapturer onCapture={handleScreenshot} />

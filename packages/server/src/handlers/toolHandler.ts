@@ -322,5 +322,34 @@ export async function handleTool(
     return ok(`Standalone scene exported to scenes/${fileName} — open it in any browser!`);
   }
 
+  // ─── Script execution ────────────────────────────────────────────────────
+
+  if (name === 'executeScript') {
+    const { code } = input as { code: string };
+    if (!ws.hasClients()) return err('No browser client connected');
+    try {
+      const result = await ws.requestScript(code);
+      return ok(result);
+    } catch (e) {
+      return err((e as Error).message);
+    }
+  }
+
+  // ─── Behaviors ──────────────────────────────────────────────────────────
+
+  if (name === 'addBehavior') {
+    const { id, objectId, type, params } = input as { id: string; objectId: string; type: 'spin' | 'bob' | 'orbit' | 'lookAt' | 'pulse'; params?: Record<string, unknown> };
+    const def = sm.addBehavior({ id, objectId, type, params });
+    ws.sendCommand({ action: 'addBehavior', commandId: uuidv4(), ...def });
+    return ok(`Behavior "${id}" (${type}) added to object "${objectId}"`);
+  }
+
+  if (name === 'removeBehavior') {
+    const { id } = input as { id: string };
+    if (!sm.removeBehavior(id)) return err(`Behavior "${id}" not found`);
+    ws.sendCommand({ action: 'removeBehavior', commandId: uuidv4(), id });
+    return ok(`Behavior "${id}" removed`);
+  }
+
   return err(`Unknown tool: "${name}"`);
 }

@@ -46,6 +46,7 @@ export interface ChatConfig {
 
 const DEFAULT_SYSTEM_PROMPT = `You are an AI 3D scene architect embedded in a live WebGL environment.
 You create visually rich, layered compositions using objects, lights, particles, post-processing, and animation.
+Adapt your style to match the user's request — realistic, fantasy, sci-fi, architectural, horror, abstract, or any aesthetic.
 
 ═══ RESPONSE FORMAT ═══
 Respond with a JSON array inside a \`\`\`json fenced code block. Include a short natural-language explanation outside the block.
@@ -54,14 +55,17 @@ If the user just asks a question (not a scene change), reply normally without co
 ═══ COMMANDS ═══
 
 ── Objects ──
-{"action":"createObject", "id":"myId", "type":"box|sphere|cylinder|cone|torus|plane|capsule|line", "position":{"x":0,"y":0,"z":0}, "scale":{"x":1,"y":1,"z":1}, "rotation":{"x":0,"y":0,"z":0}, "material":{"color":"#ff0000","metalness":0.3,"roughness":0.7,"emissive":"#ff4400","emissiveIntensity":0.5,"opacity":0.9,"wireframe":false}}
+{"action":"createObject", "id":"myId", "type":"box|sphere|cylinder|cone|torus|plane|capsule|line|torusKnot|ring|circle|dodecahedron|icosahedron|octahedron|tetrahedron|tube", "position":{"x":0,"y":0,"z":0}, "scale":{"x":1,"y":1,"z":1}, "rotation":{"x":0,"y":0,"z":0}, "material":{"color":"#ff0000","metalness":0.3,"roughness":0.7,"emissive":"#000000","emissiveIntensity":0,"opacity":1,"wireframe":false}}
 {"action":"createObject", "type":"line", "points":[{"x":0,"y":0,"z":0},{"x":1,"y":2,"z":0},{"x":3,"y":1,"z":0}], "material":{"color":"#00ff88"}}
+{"action":"createObject", "type":"tube", "points":[{"x":0,"y":0,"z":0},{"x":1,"y":2,"z":0},{"x":3,"y":1,"z":0}], "tubeRadius":0.1}
+{"action":"createObject", "type":"ring", "innerRadius":0.5}
+{"action":"createObject", "type":"torusKnot"}  (trefoil knot — great for abstract art)
 {"action":"updateObject", "id":"<id>", ...partial fields}
 {"action":"deleteObject", "id":"<id>"}
 
 ── Grouping (parentId) ──
-{"action":"createObject", "id":"ship_group", "type":"box", "position":{"x":0,"y":0,"z":0}, "scale":{"x":0.01,"y":0.01,"z":0.01}, "material":{"opacity":0}}
-{"action":"createObject", "id":"ship_body", "parentId":"ship_group", "type":"cylinder", ...}
+{"action":"createObject", "id":"tree_group", "type":"box", "position":{"x":0,"y":0,"z":0}, "scale":{"x":0.01,"y":0.01,"z":0.01}, "material":{"opacity":0}}
+{"action":"createObject", "id":"tree_trunk", "parentId":"tree_group", "type":"cylinder", ...}
 
 ── Lights ──
 {"action":"createLight", "id":"myLight", "lightType":"ambient|directional|point|spot|hemisphere", "color":"#ffffff", "intensity":1, "position":{"x":0,"y":5,"z":0}}
@@ -73,17 +77,19 @@ If the user just asks a question (not a scene change), reply normally without co
 {"action":"flyToObject", "id":"<id>", "distance":5}
 
 ── Environment & Post-Processing ──
-{"action":"setEnvironment", "background":"#0a0a1a",
-  "fog":{"color":"#000","near":10,"far":50},
+{"action":"setEnvironment", "background":"#87ceeb",
+  "fog":{"color":"#87ceeb","near":10,"far":50},
   "shadows":true,
-  "bloom":{"strength":0.6,"radius":0.4,"threshold":0.7},
-  "chromaticAberration":{"offset":0.3},
-  "vignette":{"offset":0.3,"darkness":0.6}}
+  "hdriUrl":"https://example.com/env.hdr",
+  "bloom":{"strength":0.4,"radius":0.4,"threshold":0.5},
+  "chromaticAberration":{"offset":0.1},
+  "vignette":{"offset":0.3,"darkness":0.3}}
+hdriUrl loads an HDRI panorama (.hdr) for image-based lighting and skybox. Omit for procedural sky.
 
 ── Particles ──
-{"action":"createParticles", "id":"stars", "count":500, "spread":{"x":30,"y":30,"z":30}, "size":0.05, "color":"#ffffff", "emissive":"#ffffff", "emissiveIntensity":1, "opacity":0.9, "blending":"additive", "twinkle":true}
-{"action":"updateParticles", "id":"stars", "color":"#ffcc00", "opacity":0.5}
-{"action":"deleteParticles", "id":"stars"}
+{"action":"createParticles", "id":"ambient", "count":200, "spread":{"x":20,"y":20,"z":20}, "size":0.03, "color":"#ffffff", "emissive":"#ffffff", "emissiveIntensity":0.5, "opacity":0.6, "blending":"normal", "twinkle":false}
+{"action":"updateParticles", "id":"ambient", "color":"#ffcc00", "opacity":0.5}
+{"action":"deleteParticles", "id":"ambient"}
 
 ── Animation ──
 {"action":"animateObject", "id":"<id>", "property":"position|rotation|scale|material.emissiveIntensity|material.opacity|material.color", "to":{"x":0,"y":2,"z":0}, "duration":2, "easing":"linear|easeIn|easeOut|easeInOut", "loop":true}
@@ -94,47 +100,101 @@ For material.emissiveIntensity / material.opacity: "to": 0.5 (number)
 ── Scene ──
 {"action":"clearScene"}
 
+── Behaviors (continuous per-frame effects) ──
+{"action":"addBehavior", "id":"spin1", "objectId":"<id>", "type":"spin", "params":{"speedX":0,"speedY":1,"speedZ":0}}
+{"action":"addBehavior", "id":"bob1", "objectId":"<id>", "type":"bob", "params":{"amplitude":0.5,"speed":1}}
+{"action":"addBehavior", "id":"orbit1", "objectId":"<id>", "type":"orbit", "params":{"radius":3,"speed":1,"centerX":0,"centerZ":0}}
+{"action":"addBehavior", "id":"look1", "objectId":"<id>", "type":"lookAt", "params":{"targetX":0,"targetY":0,"targetZ":0}}
+{"action":"addBehavior", "id":"pulse1", "objectId":"<id>", "type":"pulse", "params":{"min":0.8,"max":1.2,"speed":1}}
+{"action":"removeBehavior", "id":"spin1"}
+Use behaviors for persistent motion effects (spinning planets, bobbing items, orbiting satellites, pulsing gems).
+
+── Execute Script (advanced) ──
+{"action":"executeScript", "code":"scene.traverse(c => { if(c.isMesh) c.material.wireframe = true; })"}
+Runs arbitrary JavaScript in the client. Available globals: scene, camera, renderer, controls, THREE.
+Use only when built-in commands aren't enough.
+
 ═══ VISUAL COMPOSITION GUIDE ═══
 Think in layers — every great scene has: ground/structure → hero objects → atmosphere → lighting → post-FX.
+Match materials, colors, lighting, and effects to the requested style.
 
-Material recipes:
-• Glowing: emissive="#ff4400", emissiveIntensity=2, metalness=0.1, roughness=0.3
-• Metallic: metalness=0.9, roughness=0.1, color="#aabbcc"
-• Crystal: opacity=0.4, metalness=0.2, roughness=0.05, emissive="#4488ff"
-• Matte: metalness=0, roughness=0.9
+Material recipes by style:
 
-Particle recipes:
-• Starfield: count=1000, spread={x:60,y:60,z:60}, size=0.04, twinkle=true, blending="additive", color="#ffffff"
-• Fireflies: count=50, spread={x:10,y:5,z:10}, size=0.08, color="#99ff44", emissive="#99ff44", twinkle=true
-• Dust motes: count=200, spread={x:15,y:10,z:15}, size=0.03, opacity=0.4, blending="additive"
-• Sparks: count=100, spread={x:2,y:3,z:2}, size=0.06, color="#ff8800", emissive="#ff4400", emissiveIntensity=2
+REALISTIC / NATURAL:
+• Wood: color=#8B4513, metalness=0, roughness=0.9
+• Stone: color=#888888, metalness=0.1, roughness=0.8
+• Metal (iron): color=#555555, metalness=0.9, roughness=0.4
+• Fabric: color=#E0E0D1, metalness=0, roughness=0.9
+• Grass: color=#4CAF50, metalness=0, roughness=0.95
 
-Post-FX recipes:
-• Cinematic: bloom={strength:0.5, threshold:0.7}, vignette={darkness:0.5}, chromaticAberration={offset:0.15}
-• Dreamy: bloom={strength:1.0, radius:0.6, threshold:0.5}, vignette={darkness:0.3}
-• Sci-fi: bloom={strength:0.8, threshold:0.6}, chromaticAberration={offset:0.4}
+ARCHITECTURAL / MODERN:
+• Concrete: color=#C0C0C0, metalness=0.1, roughness=0.7
+• Glass: color=#FFFFFF, opacity=0.3, metalness=0.1, roughness=0.05
+• Painted wall: color=#F5F5F5, metalness=0, roughness=0.6
+• Polished metal: color=#AAAAAA, metalness=0.95, roughness=0.15
+• Marble: color=#F0F0F0, metalness=0.2, roughness=0.3
 
-Scale guide: Use real-world-ish scale. A person is ~1.8 tall. A car is ~4×1.5×2. A building is 10-30 tall.
+FANTASY / MAGICAL:
+• Glowing crystal: color=#8888FF, emissive=#6666FF, emissiveIntensity=1.5, opacity=0.4, metalness=0.2, roughness=0.05
+• Ancient stone: color=#7A7A6A, metalness=0.1, roughness=0.9
+• Magical glow: emissive=#FF44FF, emissiveIntensity=2, metalness=0.1, roughness=0.3
+• Gold: color=#FFD700, metalness=0.9, roughness=0.2
+
+SCI-FI / TECH:
+• Neon panel: color=#00FFFF, emissive=#00FFFF, emissiveIntensity=2, metalness=0, roughness=0.3
+• Carbon fiber: color=#1A1A1A, metalness=0.8, roughness=0.3
+• Hologram: color=#00AAFF, opacity=0.5, emissive=#00AAFF, emissiveIntensity=1
+
+HORROR / DARK:
+• Decayed wood: color=#3E2723, metalness=0, roughness=0.95
+• Rust: color=#8B4513, metalness=0.7, roughness=0.8
+• Blood: color=#660000, metalness=0.2, roughness=0.6
+• Dark metal: color=#1A1A1A, metalness=0.8, roughness=0.6
+
+Particle recipes by purpose:
+• Ambient space (stars, snow): count=800-1000, spread={x:50,y:50,z:50}, size=0.03-0.05, twinkle=true, blending="additive"
+• Floating lights (fireflies, embers): count=30-80, spread={x:10,y:8,z:10}, size=0.06-0.1, emissive=true, twinkle=true
+• Atmosphere (dust, fog): count=150-300, spread={x:15,y:10,z:15}, size=0.02-0.04, opacity=0.3-0.5, blending="normal"
+• Weather (rain, leaves): count=200-500, spread={x:20,y:30,z:20}, size=0.04-0.08, animate position downward
+• Magic/energy: count=50-150, spread={x:5,y:5,z:5}, size=0.05-0.08, emissive=true, bright colors, blending="additive"
+
+Post-processing recipes:
+• Natural/Subtle: bloom={strength:0.3, threshold:0.7, radius:0.3}, vignette={darkness:0.2}
+• Cinematic: bloom={strength:0.5, threshold:0.6, radius:0.4}, vignette={darkness:0.5}, chromaticAberration={offset:0.1}
+• Dreamy/Soft: bloom={strength:0.8, radius:0.6, threshold:0.4}, vignette={darkness:0.3}
+• High Contrast: bloom={strength:0.7, threshold:0.5, radius:0.4}, vignette={darkness:0.6}, chromaticAberration={offset:0.3}
+• Moody/Dark: bloom={strength:0.3, threshold:0.8}, vignette={darkness:0.7}
+
+Lighting guide by style:
+• Natural: Directional (sun) #FFF5E6 intensity=1.2-1.5, Hemisphere (sky) #87CEEB intensity=0.4, Ambient #FFFFFF intensity=0.3
+• Indoor: Point lights #FFE4B5 intensity=1-2, Ambient #F5F5F5 intensity=0.5, spot for accent
+• Dramatic: Strong directional from side, low ambient (0.1-0.2), colored rim lights
+• Moody: Low overall intensity, colored point lights, heavy shadows
+• Sci-fi: Colored lights (cyan/magenta), emissive materials, moderate bloom
+
+Scale guide: Use real-world scale. A person is ~1.8 tall. A car is ~4×1.5×2. A building is 10-30 tall.
 Density guide: Scenes feel richer with 8-20 objects, 2-4 lights, 1-2 particle systems, and post-FX.
 
 ═══ EXAMPLE ═══
-I'll create a glowing sci-fi corridor.
+I'll create a serene garden scene.
 \`\`\`json
 [
-  {"action":"setEnvironment","background":"#050510","fog":{"color":"#050510","near":5,"far":40},"bloom":{"strength":0.7,"threshold":0.6},"vignette":{"darkness":0.5}},
-  {"action":"createObject","id":"floor","type":"plane","position":{"x":0,"y":0,"z":0},"scale":{"x":4,"y":1,"z":20},"rotation":{"x":-90,"y":0,"z":0},"material":{"color":"#111122","metalness":0.8,"roughness":0.2}},
-  {"action":"createObject","id":"wall_l","type":"box","position":{"x":-2,"y":1.5,"z":0},"scale":{"x":0.1,"y":3,"z":20},"material":{"color":"#0a0a15","metalness":0.6,"roughness":0.3}},
-  {"action":"createObject","id":"wall_r","type":"box","position":{"x":2,"y":1.5,"z":0},"scale":{"x":0.1,"y":3,"z":20},"material":{"color":"#0a0a15","metalness":0.6,"roughness":0.3}},
-  {"action":"createObject","id":"strip_l","type":"box","position":{"x":-1.9,"y":1,"z":0},"scale":{"x":0.02,"y":0.1,"z":18},"material":{"color":"#00ccff","emissive":"#00ccff","emissiveIntensity":3,"metalness":0}},
-  {"action":"createObject","id":"strip_r","type":"box","position":{"x":1.9,"y":1,"z":0},"scale":{"x":0.02,"y":0.1,"z":18},"material":{"color":"#00ccff","emissive":"#00ccff","emissiveIntensity":3,"metalness":0}},
-  {"action":"createLight","id":"glow","lightType":"point","color":"#00aaff","intensity":2,"position":{"x":0,"y":2.5,"z":0}},
-  {"action":"createParticles","id":"dust","count":150,"spread":{"x":3.5,"y":2.5,"z":18},"size":0.02,"color":"#4488ff","emissive":"#4488ff","opacity":0.5,"blending":"additive","twinkle":true},
-  {"action":"animateObject","id":"strip_l","property":"material.emissiveIntensity","to":0.5,"duration":2,"easing":"easeInOut","loop":true},
-  {"action":"animateObject","id":"strip_r","property":"material.emissiveIntensity","to":0.5,"duration":2,"easing":"easeInOut","loop":true}
+  {"action":"setEnvironment","background":"#87CEEB","fog":{"color":"#B0C4DE","near":15,"far":50},"bloom":{"strength":0.3,"threshold":0.7,"radius":0.3},"vignette":{"darkness":0.2}},
+  {"action":"createObject","id":"ground","type":"plane","position":{"x":0,"y":0,"z":0},"scale":{"x":30,"y":1,"z":30},"rotation":{"x":-90,"y":0,"z":0},"material":{"color":"#4CAF50","metalness":0,"roughness":0.95}},
+  {"action":"createObject","id":"path","type":"plane","position":{"x":0,"y":0.01,"z":0},"scale":{"x":2,"y":1,"z":15},"rotation":{"x":-90,"y":0,"z":0},"material":{"color":"#D2B48C","metalness":0.1,"roughness":0.8}},
+  {"action":"createObject","id":"tree1_trunk","type":"cylinder","position":{"x":-5,"y":2,"z":-5},"scale":{"x":0.4,"y":4,"z":0.4},"material":{"color":"#8B4513","metalness":0,"roughness":0.9}},
+  {"action":"createObject","id":"tree1_leaves","type":"sphere","position":{"x":-5,"y":5,"z":-5},"scale":{"x":2.5,"y":2.5,"z":2.5},"material":{"color":"#228B22","metalness":0,"roughness":0.9}},
+  {"action":"createObject","id":"fountain","type":"cylinder","position":{"x":0,"y":0.5,"z":-8},"scale":{"x":1.5,"y":1,"z":1.5},"material":{"color":"#A9A9A9","metalness":0.3,"roughness":0.5}},
+  {"action":"createObject","id":"water","type":"cylinder","position":{"x":0,"y":0.6,"z":-8},"scale":{"x":1.3,"y":0.3,"z":1.3},"material":{"color":"#4DD0E1","metalness":0.1,"roughness":0.1,"opacity":0.7}},
+  {"action":"createLight","id":"sun","lightType":"directional","color":"#FFF5E6","intensity":1.3,"position":{"x":10,"y":15,"z":5}},
+  {"action":"createLight","id":"sky","lightType":"hemisphere","color":"#87CEEB","intensity":0.4},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#FFFFFF","intensity":0.3},
+  {"action":"createParticles","id":"pollen","count":100,"spread":{"x":15,"y":8,"z":15},"size":0.04,"color":"#FFFACD","emissive":"#FFFACD","emissiveIntensity":0.5,"opacity":0.6,"blending":"additive","twinkle":true},
+  {"action":"animateObject","id":"water","property":"position","to":{"x":0,"y":0.7,"z":-8},"duration":1.5,"easing":"easeInOut","loop":true}
 ]
 \`\`\`
 
-Always aim for visually impressive, layered scenes. Use emissive materials, particles, bloom, and animation generously.`;
+Always aim for visually rich, layered scenes appropriate to the requested style. Balance detail with performance.`;
 
 /** Model lists per provider — shown in the client dropdown. Synced with iOSMaigeXr. */
 const PROVIDER_CATALOG: Record<Provider, { label: string; models: string[]; defaultModel: string }> = {
@@ -297,6 +357,69 @@ export class ChatRelay {
 
   // ─── Private: direct AI mode ──────────────────────────────────────────────
 
+  /** Build a compact summary of the current scene state for AI context. */
+  private buildSceneContext(): string | null {
+    if (!this.stateManager) return null;
+    const state = this.stateManager.getState();
+    const parts: string[] = ['[CURRENT SCENE STATE]'];
+
+    // Objects
+    const objs = Object.values(state.objects);
+    if (objs.length > 0) {
+      parts.push(`Objects (${objs.length}):`);
+      for (const o of objs) {
+        const pos = `(${o.position.x},${o.position.y},${o.position.z})`;
+        const mat = o.material ? ` color=${o.material.color ?? '?'}` : '';
+        const parent = o.parentId ? ` parent=${o.parentId}` : '';
+        parts.push(`  ${o.id}: ${o.type} at ${pos}${mat}${parent}`);
+      }
+    } else {
+      parts.push('Objects: (none)');
+    }
+
+    // Lights
+    const lights = Object.values(state.lights);
+    if (lights.length > 0) {
+      parts.push(`Lights (${lights.length}):`);
+      for (const l of lights) {
+        parts.push(`  ${l.id}: ${l.lightType} color=${l.color} intensity=${l.intensity}`);
+      }
+    }
+
+    // Particles
+    const particles = Object.values(state.particles ?? {});
+    if (particles.length > 0) {
+      parts.push(`Particles (${particles.length}):`);
+      for (const p of particles) {
+        parts.push(`  ${p.id}: count=${p.count} color=${p.color}`);
+      }
+    }
+
+    // Camera
+    const cam = state.camera;
+    parts.push(`Camera: pos=(${cam.position.x},${cam.position.y},${cam.position.z}) target=(${cam.target.x},${cam.target.y},${cam.target.z}) fov=${cam.fov ?? 60}`);
+
+    // Environment
+    const env = state.environment;
+    const envParts: string[] = [];
+    if (env.background) envParts.push(`bg=${env.background}`);
+    if (env.fog) envParts.push(`fog=${env.fog.color}`);
+    if (env.bloom) envParts.push(`bloom=${env.bloom.strength}`);
+    if (env.toneMapping) envParts.push(`tone=${env.toneMapping}`);
+    parts.push(`Environment: ${envParts.join(' ') || '(default)'}`);
+
+    // Behaviors
+    const behaviors = Object.values((state as any).behaviors ?? {});
+    if (behaviors.length > 0) {
+      parts.push(`Active behaviors (${behaviors.length}):`);
+      for (const b of behaviors as any[]) {
+        parts.push(`  ${b.objectId}: ${b.type}`);
+      }
+    }
+
+    return parts.join('\n');
+  }
+
   private async processNext(): Promise<void> {
     if (this.processing) return;
     const msg = this.queue.peek();
@@ -304,7 +427,13 @@ export class ChatRelay {
 
     this.processing = true;
     try {
-      const rawReply = await this.callAI(msg.message);
+      // Build scene context so the AI knows what's in the scene
+      const sceneContext = this.buildSceneContext();
+      const augmentedMessage = sceneContext
+        ? `${sceneContext}\n\nUser request: ${msg.message}`
+        : msg.message;
+
+      const rawReply = await this.callAI(augmentedMessage);
       this.queue.shift();
 
       // Parse and execute any scene commands from the AI response
@@ -556,6 +685,50 @@ export class ChatRelay {
             sm.clearScene();
             const state = sm.getState();
             ws.sendCommand({ action: 'loadScene', commandId: uuidv4(), state });
+            break;
+          }
+          case 'createParticles': {
+            const p = sm.createParticles(cmd as Parameters<typeof sm.createParticles>[0]);
+            ws.sendCommand({ action: 'createParticles', commandId: uuidv4(), ...p });
+            break;
+          }
+          case 'updateParticles': {
+            const { id, ...props } = cmd as { id: string; [k: string]: unknown };
+            const p = sm.updateParticles(id, props);
+            if (p) ws.sendCommand({ action: 'updateParticles', commandId: uuidv4(), ...p });
+            break;
+          }
+          case 'deleteParticles': {
+            const id = cmd['id'] as string;
+            if (sm.deleteParticles(id)) ws.sendCommand({ action: 'deleteParticles', commandId: uuidv4(), id });
+            break;
+          }
+          case 'flyToObject': {
+            ws.sendCommand({ action: 'flyToObject', commandId: uuidv4(), ...cmd });
+            break;
+          }
+          case 'stopAnimation': {
+            const id = cmd['id'] as string;
+            sm.removeAnimation(id);
+            ws.sendCommand({ action: 'stopAnimation', commandId: uuidv4(), id });
+            break;
+          }
+          case 'executeScript': {
+            const code = cmd['code'] as string;
+            if (code) {
+              ws.requestScript(code).catch(e => console.error('[ChatRelay] Script error:', e));
+            }
+            break;
+          }
+          case 'addBehavior': {
+            sm.addBehavior(cmd as Parameters<typeof sm.addBehavior>[0]);
+            ws.sendCommand({ action: 'addBehavior', commandId: uuidv4(), ...cmd });
+            break;
+          }
+          case 'removeBehavior': {
+            const id = cmd['id'] as string;
+            sm.removeBehavior(id);
+            ws.sendCommand({ action: 'removeBehavior', commandId: uuidv4(), id });
             break;
           }
           default:

@@ -1,5 +1,5 @@
 import { SceneManager } from '../scene.js';
-import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, AnimationDef, ParticleDef, Vec3 } from '../types.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, AnimationDef, ParticleDef, BehaviorDef, Vec3 } from '../types.js';
 
 /** Dispatch a raw command (from the server) to the SceneManager. */
 export function dispatch(
@@ -7,6 +7,7 @@ export function dispatch(
   scene: SceneManager,
   currentTime: number,
   sendScreenshot: (requestId: string, dataUrl: string) => void,
+  sendScriptResult?: (requestId: string, result: string, error?: string) => void,
 ): void {
   const action = cmd['action'] as string | undefined;
   if (!action) return;
@@ -109,11 +110,40 @@ export function dispatch(
       scene.deleteParticles(cmd['id'] as string);
       break;
 
+    // ── Behaviors ────────────────────────────────────────────────
+    case 'addBehavior':
+      scene.addBehavior(cmd as unknown as BehaviorDef);
+      break;
+
+    case 'removeBehavior':
+      scene.removeBehavior(cmd['id'] as string);
+      break;
+
     // ── Screenshot ───────────────────────────────────────────────
     case 'takeScreenshot': {
       const requestId = cmd['requestId'] as string;
       const dataUrl = scene.takeScreenshot();
       sendScreenshot(requestId, dataUrl);
+      break;
+    }
+
+    // ── Script execution ─────────────────────────────────────────
+    case 'executeScript': {
+      const requestId = cmd['requestId'] as string;
+      const code = cmd['code'] as string;
+      if (sendScriptResult) {
+        (async () => {
+          try {
+            const THREE = await import('three');
+            const fn = new Function('scene', 'camera', 'renderer', 'controls', 'THREE',
+              `return (async () => { ${code} })();`);
+            const result = await fn(scene.scene, scene.camera, scene.renderer, scene.controls, THREE);
+            sendScriptResult(requestId, result !== undefined ? String(result) : 'undefined');
+          } catch (e) {
+            sendScriptResult(requestId, '', (e as Error).message);
+          }
+        })();
+      }
       break;
     }
 

@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 function vec3ToStr(v: Vec3 | string): string {
   if (typeof v === 'string') return v;
@@ -30,6 +31,7 @@ export class AFrameSceneManager {
   private objects = new Map<string, HTMLElement>();
   private lights  = new Map<string, HTMLElement>();
   private particles = new Map<string, { points: THREE.Points; def: ParticleDef }>();
+  private behaviors = new Map<string, import('./types.js').BehaviorDef>();
   private scene: Element;
   private bloomPass: UnrealBloomPass | null = null;
   private composer: EffectComposer | null = null;
@@ -79,6 +81,71 @@ export class AFrameSceneManager {
     dir.setAttribute('position', '5 10 7');
     dir.setAttribute('id', '__default_dir');
     this.scene.appendChild(dir);
+
+    // Start behavior tick loop
+    const tickBehaviors = () => {
+      requestAnimationFrame(tickBehaviors);
+      if (this.behaviors.size === 0) return;
+      const timeSec = performance.now() / 1000;
+      for (const [, beh] of this.behaviors) {
+        const el = this.objects.get(beh.objectId);
+        if (!el) continue;
+        const obj3d = (el as any).object3D as THREE.Object3D | undefined;
+        if (!obj3d) continue;
+        const p = beh.params;
+        const speed = (p.speed as number) ?? 1;
+        switch (beh.type) {
+          case 'spin': {
+            const axis = (p.axis as string) ?? 'y';
+            const delta = speed * 0.016 * (180 / Math.PI); // convert to degrees for A-Frame
+            const cur = el.getAttribute('rotation') || '0 0 0';
+            const parts = cur.split(' ').map(Number);
+            if (axis === 'x') parts[0] += delta;
+            else if (axis === 'z') parts[2] += delta;
+            else parts[1] += delta;
+            el.setAttribute('rotation', `${parts[0]} ${parts[1]} ${parts[2]}`);
+            break;
+          }
+          case 'bob': {
+            const axis = (p.axis as string) ?? 'y';
+            const amp = (p.amplitude as number) ?? 0.5;
+            const baseVal = (p._basePos as number) ?? obj3d.position[axis as 'x'|'y'|'z'];
+            if (p._basePos === undefined) (p as any)._basePos = baseVal;
+            obj3d.position[axis as 'x'|'y'|'z'] = baseVal + Math.sin(timeSec * speed) * amp;
+            break;
+          }
+          case 'orbit': {
+            const cx = (p.center as any)?.x ?? 0;
+            const cy = (p.center as any)?.y ?? obj3d.position.y;
+            const cz = (p.center as any)?.z ?? 0;
+            const rad = (p.radius as number) ?? 2;
+            obj3d.position.x = cx + Math.cos(timeSec * speed) * rad;
+            obj3d.position.z = cz + Math.sin(timeSec * speed) * rad;
+            obj3d.position.y = cy;
+            break;
+          }
+          case 'lookAt': {
+            const target = p.target as string;
+            if (target === 'camera') {
+              const cam = document.getElementById('main-camera');
+              if (cam) obj3d.lookAt((cam as any).object3D.position);
+            } else {
+              const t = this.objects.get(target);
+              if (t) obj3d.lookAt((t as any).object3D.position);
+            }
+            break;
+          }
+          case 'pulse': {
+            const min = (p.min as number) ?? 0.8;
+            const max = (p.max as number) ?? 1.2;
+            const s = min + (max - min) * (0.5 + 0.5 * Math.sin(timeSec * speed));
+            obj3d.scale.set(s, s, s);
+            break;
+          }
+        }
+      }
+    };
+    requestAnimationFrame(tickBehaviors);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -102,20 +169,29 @@ export class AFrameSceneManager {
     const d = def.depth  ?? 1;
     const r = def.radius ?? 0.5;
 
+    const tr = (def as any).tubeRadius as number | undefined;
     switch (def.type) {
-      case 'sphere':   return `primitive: sphere; radius: ${r}; segmentsWidth: 64; segmentsHeight: 64`;
-      case 'cylinder': return `primitive: cylinder; radius: ${r}; height: ${h}; segmentsRadial: 64`;
-      case 'cone':     return `primitive: cone; radiusBottom: ${r}; height: ${h}; segmentsRadial: 64`;
-      case 'torus':    return `primitive: torus; radius: ${r}; radiusTubular: ${r * 0.4}; segmentsRadial: 64; segmentsTubular: 24`;
-      case 'plane':    return `primitive: plane; width: ${w}; height: ${h}`;
-      case 'capsule':  return `primitive: cylinder; radius: ${r}; height: ${h + r * 2}; openEnded: false; segmentsRadial: 64`;
-      default:         return `primitive: box; width: ${w}; height: ${h}; depth: ${d}`;
+      case 'sphere':       return `primitive: sphere; radius: ${r}; segmentsWidth: 64; segmentsHeight: 64`;
+      case 'cylinder':     return `primitive: cylinder; radius: ${r}; height: ${h}; segmentsRadial: 64`;
+      case 'cone':         return `primitive: cone; radiusBottom: ${r}; height: ${h}; segmentsRadial: 64`;
+      case 'torus':        return `primitive: torus; radius: ${r}; radiusTubular: ${tr ?? r * 0.4}; segmentsRadial: 64; segmentsTubular: 24`;
+      case 'plane':        return `primitive: plane; width: ${w}; height: ${h}`;
+      case 'capsule':      return `primitive: cylinder; radius: ${r}; height: ${h + r * 2}; openEnded: false; segmentsRadial: 64`;
+      case 'torusKnot':    return `primitive: torusKnot; radius: ${r}; radiusTubular: ${tr ?? 0.2}; segmentsRadial: 64; segmentsTubular: 16`;
+      case 'ring':         return `primitive: ring; radiusInner: ${(def as any).innerRadius ?? 0.3}; radiusOuter: ${r}; segmentsTheta: 64`;
+      case 'circle':       return `primitive: circle; radius: ${r}; segments: 64`;
+      case 'dodecahedron':  return `primitive: sphere; radius: ${r}; segmentsWidth: 6; segmentsHeight: 4`;
+      case 'icosahedron':   return `primitive: sphere; radius: ${r}; segmentsWidth: 5; segmentsHeight: 3`;
+      case 'octahedron':    return `primitive: sphere; radius: ${r}; segmentsWidth: 4; segmentsHeight: 2`;
+      case 'tetrahedron':   return `primitive: sphere; radius: ${r}; segmentsWidth: 3; segmentsHeight: 2`;
+      case 'tube':         return `primitive: cylinder; radius: ${tr ?? 0.2}; height: ${h}; segmentsRadial: 32`;
+      default:             return `primitive: box; width: ${w}; height: ${h}; depth: ${d}`;
     }
   }
 
   private materialAttr(def: SceneObject): string {
     const m = def.material ?? {};
-    const color = m.color ?? '#4488ff';
+    const color = m.color ?? '#cccccc';  // neutral grey instead of blue
     let attr = `color: ${color}`;
     if (m.metalness !== undefined) attr += `; metalness: ${m.metalness}`;
     if (m.roughness !== undefined) attr += `; roughness: ${m.roughness}`;
@@ -387,12 +463,38 @@ export class AFrameSceneManager {
     this.particles.delete(id);
   }
 
+  // ─── Behaviors ────────────────────────────────────────────────────────────────
+
+  addBehavior(def: import('./types.js').BehaviorDef): void {
+    this.behaviors.set(def.id, { ...def, params: { ...def.params } });
+  }
+
+  removeBehavior(id: string): void {
+    this.behaviors.delete(id);
+  }
+
   // ── Environment ──────────────────────────────────────────────────────────────
 
   setEnvironment(env: EnvironmentDef): void {
     const scene = this.scene as Element & { setAttribute: (name: string, value: string) => void };
     if (env.background) {
       scene.setAttribute('background', `color: ${env.background}`);
+    }
+    // HDRI environment map via underlying Three.js renderer
+    if (env.hdriUrl) {
+      const aScene = this.scene as unknown as { renderer: THREE.WebGLRenderer; object3D: THREE.Scene };
+      if (aScene.renderer && aScene.object3D) {
+        const pmrem = new THREE.PMREMGenerator(aScene.renderer);
+        new RGBELoader().load(env.hdriUrl, (hdrTexture: THREE.DataTexture) => {
+          const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
+          aScene.object3D.environment = envMap;
+          if (env.skyType === 'hdri') {
+            aScene.object3D.background = envMap;
+          }
+          hdrTexture.dispose();
+          pmrem.dispose();
+        });
+      }
     }
     if (env.fog) {
       scene.setAttribute('fog', `type: linear; color: ${env.fog.color}; near: ${env.fog.near}; far: ${env.fog.far}`);
@@ -432,6 +534,7 @@ export class AFrameSceneManager {
     for (const id of [...this.objects.keys()]) this.deleteObject(id);
     for (const id of [...this.lights.keys()])  this.deleteLight(id);
     for (const id of [...this.particles.keys()]) this.deleteParticles(id);
+    this.behaviors.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);

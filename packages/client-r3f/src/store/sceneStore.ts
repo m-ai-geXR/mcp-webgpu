@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import {
   SceneObject, SceneLight, SceneCamera, EnvironmentDef,
-  SceneState, ActiveAnimation, ParticleDef,
+  SceneState, ActiveAnimation, ParticleDef, BehaviorDef,
 } from '../types.js';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
@@ -15,6 +15,7 @@ export interface SceneStore {
   objects:     Record<string, SceneObject>;
   lights:      Record<string, SceneLight>;
   particles:   Record<string, ParticleDef>;
+  behaviors:   Record<string, BehaviorDef>;
   camera:      Partial<SceneCamera>;
   environment: Partial<EnvironmentDef>;
   animations:  Record<string, ActiveAnimation>;
@@ -43,6 +44,10 @@ export interface SceneStore {
   updateParticles: (p: Partial<ParticleDef> & { id: string }) => void;
   deleteParticles: (id: string) => void;
 
+  // Behaviors
+  addBehavior:    (b: BehaviorDef) => void;
+  removeBehavior: (id: string) => void;
+
   // Full scene reload
   loadScene: (state: SceneState) => void;
 
@@ -62,6 +67,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   objects:     {},
   lights:      {},
   particles:   {},
+  behaviors:   {},
   camera:      { fov: 60, near: 0.1, far: 2000 },
   environment: { background: '#1a1a2e' },
   animations:  {},
@@ -118,11 +124,20 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     return { particles: rest };
   }),
 
+  // ── Behaviors ─────────────────────────────────────────────────────────
+  addBehavior: (b) => set((s) => ({ behaviors: { ...s.behaviors, [b.id]: b } })),
+
+  removeBehavior: (id) => set((s) => {
+    const { [id]: _, ...rest } = s.behaviors;
+    return { behaviors: rest };
+  }),
+
   // ── Full scene reload ─────────────────────────────────────────────────
   loadScene: (state) => set(() => ({
     objects:     state.objects     ?? {},
     lights:      state.lights      ?? {},
     particles:   (state as any).particles ?? {},
+    behaviors:   (state as any).behaviors ?? {},
     camera:      state.camera      ?? {},
     environment: state.environment ?? {},
     animations: {},

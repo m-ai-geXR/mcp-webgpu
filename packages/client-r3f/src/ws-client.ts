@@ -88,6 +88,10 @@ export class WSClient {
     this.send({ type: 'screenshot', requestId, dataUrl });
   }
 
+  sendScriptResult(requestId: string, result: string, error?: string): void {
+    this.send({ type: 'script-result', requestId, result, error });
+  }
+
   sendStateUpdate(state: unknown): void {
     this.send({ type: 'state-update', sessionId: this.sessionId, data: state });
   }

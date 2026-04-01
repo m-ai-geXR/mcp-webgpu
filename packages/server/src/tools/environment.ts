@@ -8,6 +8,7 @@ export const environmentTools: Tool[] = [
       type: 'object',
       properties: {
         background: { type: 'string', description: 'CSS color or HDRI URL for the background' },
+        hdriUrl: { type: 'string', description: 'URL to a .hdr or .exr HDRI file for image-based lighting. This sets both the environment map (for reflections) and optionally the background. Use with skyType:"hdri".' },
         fog: {
           type: 'object',
           properties: {

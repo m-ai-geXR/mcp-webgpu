@@ -23,11 +23,26 @@ function main(): void {
 
   wsClient = new WSClient(WS_URL, FRAMEWORK, {
     onCommand(cmd) {
-      const c = cmd as { action: string; requestId?: string };
+      const c = cmd as { action: string; requestId?: string; code?: string };
 
       if (c.action === 'takeScreenshot') {
         const dataUrl = scene.takeScreenshot();
         wsClient.sendScreenshot(c.requestId ?? '', dataUrl);
+        return;
+      }
+
+      if (c.action === 'executeScript') {
+        (async () => {
+          try {
+            const BABYLON = await import('@babylonjs/core');
+            const fn = new Function('scene', 'camera', 'engine', 'BABYLON',
+              `return (async () => { ${c.code} })();`);
+            const result = await fn(scene.scene, scene.scene.activeCamera, scene.engine, BABYLON);
+            wsClient.sendScriptResult(c.requestId ?? '', result !== undefined ? String(result) : 'undefined');
+          } catch (e) {
+            wsClient.sendScriptResult(c.requestId ?? '', '', (e as Error).message);
+          }
+        })();
         return;
       }
 

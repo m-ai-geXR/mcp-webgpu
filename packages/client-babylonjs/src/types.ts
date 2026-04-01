@@ -63,6 +63,8 @@ export interface SceneCamera {
 export interface EnvironmentDef {
   background?: string;
   fog?: { color: string; near: number; far: number };
+  skyType?: 'color' | 'gradient' | 'hdri' | 'procedural';
+  hdriUrl?: string;
   shadows?: boolean;
   exposure?: number;
   bloom?: { strength?: number; radius?: number; threshold?: number };
@@ -106,6 +108,14 @@ export interface AnimationDef {
   easing: string;
   loop: boolean;
   colorTo?: string;
+}
+
+/** Behavior definition — continuous frame-tick effect */
+export interface BehaviorDef {
+  id: string;
+  objectId: string;
+  type: 'spin' | 'bob' | 'orbit' | 'lookAt' | 'pulse';
+  params: Record<string, unknown>;
 }
 
 export interface ActiveTween {

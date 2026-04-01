@@ -83,6 +83,8 @@ export class BabylonSceneManager {
   private animatables  = new Map<string, Animatable>();
   private pipeline:      DefaultRenderingPipeline | null = null;
 
+  private behaviors = new Map<string, import('./types.js').BehaviorDef>();
+
   // ── WebXR VR ─────────────────────────────────────────────────────────────
   private xrExperience: WebXRDefaultExperience | null = null;
   private vrChatMesh:   ReturnType<typeof MeshBuilder.CreatePlane> | null = null;
@@ -107,9 +109,11 @@ export class BabylonSceneManager {
     const hemi = new HemisphericLight('__hemi', new Vector3(0, 1, 0), this.scene);
     hemi.intensity = 0.4;
 
+    // Warmer, more intense directional light (sun-like)
     const defaultDir = new DirectionalLight('__default_dir', new Vector3(-1, -2, -1).normalize(), this.scene);
     defaultDir.position = new Vector3(5, 10, 7);
-    defaultDir.intensity = 0.8;
+    defaultDir.intensity = 1.2;  // increased from 0.8
+    defaultDir.diffuse = hexToColor3('#FFF5E6');  // warm white instead of pure white
 
     // Arc-rotate camera (orbit controls built in)
     this.camera = new ArcRotateCamera('main-cam', -Math.PI / 4, Math.PI / 3, 10, Vector3.Zero(), this.scene);
@@ -125,7 +129,7 @@ export class BabylonSceneManager {
     // ── Post-processing pipeline ─────────────────────────────────────────────
     this.pipeline = new DefaultRenderingPipeline('defaultPipeline', true, this.scene, [this.camera]);
     this.pipeline.bloomEnabled = true;
-    this.pipeline.bloomThreshold = 0.8;
+    this.pipeline.bloomThreshold = 0.5;  // lowered from 0.8 for more visible glow
     this.pipeline.bloomWeight = 0.4;
     this.pipeline.bloomKernel = 64;
     this.pipeline.bloomScale = 0.5;
@@ -145,6 +149,7 @@ export class BabylonSceneManager {
     // Render loop
     this.engine.runRenderLoop(() => {
       this.advanceTweens();
+      this.tickBehaviors();
       this.scene.render();
     });
 
@@ -316,6 +321,8 @@ export class BabylonSceneManager {
     const d = def.depth  ?? 1;
     const r = def.radius ?? 0.5;
 
+    const tr = (def as any).tubeRadius as number | undefined;
+    const detail = (def as any).detail as number | undefined;
     switch (def.type) {
       case 'sphere':
         mesh = MeshBuilder.CreateSphere(def.id, { diameter: r * 2, segments: 64 }, this.scene);
@@ -327,7 +334,7 @@ export class BabylonSceneManager {
         mesh = MeshBuilder.CreateCylinder(def.id, { height: h, diameterBottom: r * 2, diameterTop: 0, tessellation: 64 }, this.scene);
         break;
       case 'torus':
-        mesh = MeshBuilder.CreateTorus(def.id, { diameter: r * 2, thickness: r * 0.8, tessellation: 64 }, this.scene);
+        mesh = MeshBuilder.CreateTorus(def.id, { diameter: r * 2, thickness: tr != null ? tr * 2 : r * 0.8, tessellation: 64 }, this.scene);
         break;
       case 'plane':
         mesh = MeshBuilder.CreatePlane(def.id, { width: w, height: h }, this.scene);
@@ -335,6 +342,39 @@ export class BabylonSceneManager {
       case 'capsule':
         mesh = MeshBuilder.CreateCapsule(def.id, { radius: r, height: h + r * 2, tessellation: 32 }, this.scene);
         break;
+      case 'torusKnot':
+        mesh = MeshBuilder.CreateTorusKnot(def.id, { radius: r, tube: tr ?? 0.2, radialSegments: 64, tubularSegments: 16 }, this.scene);
+        break;
+      case 'ring': {
+        const inner = (def as any).innerRadius ?? 0.3;
+        mesh = MeshBuilder.CreateDisc(def.id, { radius: r, tessellation: 64 }, this.scene);
+        // Babylon doesn't have a ring primitive — use a disc as approximation
+        break;
+      }
+      case 'circle':
+        mesh = MeshBuilder.CreateDisc(def.id, { radius: r, tessellation: 64 }, this.scene);
+        break;
+      case 'dodecahedron':
+        mesh = MeshBuilder.CreatePolyhedron(def.id, { type: 2, size: r }, this.scene);
+        break;
+      case 'icosahedron':
+        mesh = MeshBuilder.CreatePolyhedron(def.id, { type: 3, size: r }, this.scene);
+        break;
+      case 'octahedron':
+        mesh = MeshBuilder.CreatePolyhedron(def.id, { type: 1, size: r }, this.scene);
+        break;
+      case 'tetrahedron':
+        mesh = MeshBuilder.CreatePolyhedron(def.id, { type: 0, size: r }, this.scene);
+        break;
+      case 'tube': {
+        if (def.points && def.points.length >= 2) {
+          const path = def.points.map(p => new Vector3(p.x, p.y, p.z));
+          mesh = MeshBuilder.CreateTube(def.id, { path, radius: tr ?? 0.2, tessellation: 32, cap: Mesh.CAP_ALL }, this.scene);
+        } else {
+          mesh = MeshBuilder.CreateBox(def.id, { width: w, height: h, depth: d }, this.scene);
+        }
+        break;
+      }
       default:
         mesh = MeshBuilder.CreateBox(def.id, { width: w, height: h, depth: d }, this.scene);
     }
@@ -560,6 +600,14 @@ export class BabylonSceneManager {
       const c = hexToColor3(env.background);
       this.scene.clearColor = new Color4(c.r, c.g, c.b, 1);
     }
+    // HDRI environment map for reflections and optionally background
+    if (env.hdriUrl) {
+      const envTex = CubeTexture.CreateFromPrefilteredData(env.hdriUrl, this.scene);
+      this.scene.environmentTexture = envTex;
+      if (env.skyType === 'hdri') {
+        this.scene.createDefaultSkybox(envTex, true, 1000);
+      }
+    }
     if (env.fog) {
       this.scene.fogMode  = Scene.FOGMODE_LINEAR;
       this.scene.fogColor = hexToColor3(env.fog.color);
@@ -583,7 +631,7 @@ export class BabylonSceneManager {
       if (env.bloom) {
         p.bloomEnabled   = true;
         p.bloomWeight    = env.bloom.strength ?? 0.4;
-        p.bloomThreshold = env.bloom.threshold ?? 0.8;
+        p.bloomThreshold = env.bloom.threshold ?? 0.5;  // lowered from 0.8 for more visible glow
         p.bloomKernel    = Math.round((env.bloom.radius ?? 0.4) * 128);
       }
       if (env.chromaticAberration) {
@@ -662,6 +710,71 @@ export class BabylonSceneManager {
     this.particles.delete(id);
   }
 
+  // ─── Behaviors ────────────────────────────────────────────────────────────────
+
+  addBehavior(def: import('./types.js').BehaviorDef): void {
+    this.behaviors.set(def.id, { ...def, params: { ...def.params } });
+  }
+
+  removeBehavior(id: string): void {
+    this.behaviors.delete(id);
+  }
+
+  private tickBehaviors(): void {
+    const timeSec = performance.now() / 1000;
+    for (const [, beh] of this.behaviors) {
+      const mesh = this.meshes.get(beh.objectId);
+      if (!mesh) continue;
+      const p = beh.params;
+      const speed = (p.speed as number) ?? 1;
+      switch (beh.type) {
+        case 'spin': {
+          const axis = (p.axis as string) ?? 'y';
+          const delta = speed * 0.016;
+          if (axis === 'x') mesh.rotation.x += delta;
+          else if (axis === 'z') mesh.rotation.z += delta;
+          else mesh.rotation.y += delta;
+          break;
+        }
+        case 'bob': {
+          const axis = (p.axis as string) ?? 'y';
+          const amp = (p.amplitude as number) ?? 0.5;
+          const baseVal = (p._basePos as number) ?? mesh.position[axis as 'x'|'y'|'z'];
+          if (p._basePos === undefined) (p as any)._basePos = baseVal;
+          mesh.position[axis as 'x'|'y'|'z'] = baseVal + Math.sin(timeSec * speed) * amp;
+          break;
+        }
+        case 'orbit': {
+          const cx = (p.center as any)?.x ?? 0;
+          const cy = (p.center as any)?.y ?? mesh.position.y;
+          const cz = (p.center as any)?.z ?? 0;
+          const rad = (p.radius as number) ?? 2;
+          mesh.position.x = cx + Math.cos(timeSec * speed) * rad;
+          mesh.position.z = cz + Math.sin(timeSec * speed) * rad;
+          mesh.position.y = cy;
+          break;
+        }
+        case 'lookAt': {
+          const target = p.target as string;
+          if (target === 'camera') {
+            mesh.lookAt(this.camera.position);
+          } else {
+            const t = this.meshes.get(target);
+            if (t) mesh.lookAt(t.position);
+          }
+          break;
+        }
+        case 'pulse': {
+          const min = (p.min as number) ?? 0.8;
+          const max = (p.max as number) ?? 1.2;
+          const s = min + (max - min) * (0.5 + 0.5 * Math.sin(timeSec * speed));
+          mesh.scaling.set(s, s, s);
+          break;
+        }
+      }
+    }
+  }
+
   // ── Full scene rebuild ────────────────────────────────────────────────────────
 
   loadScene(state: SceneState): void {
@@ -670,6 +783,7 @@ export class BabylonSceneManager {
     for (const id of [...this.particles.keys()]) this.deleteParticles(id);
     this.tweens.clear();
     this.animatables.clear();
+    this.behaviors.clear();
 
     if (state.environment) this.setEnvironment(state.environment);
     if (state.camera)      this.setCamera(state.camera);
@@ -700,18 +814,21 @@ export class BabylonSceneManager {
     mesh: ReturnType<typeof MeshBuilder.CreateBox>,
     def: import('./types.js').MaterialDef,
   ): void {
-    const color = hexToColor3(def.color ?? '#4488ff');
+    const color = hexToColor3(def.color ?? '#cccccc');  // neutral grey instead of blue
 
     // Always use PBR to match Three.js MeshStandardMaterial defaults
     const mat = new PBRMaterial(`mat_${mesh.name}`, this.scene);
     mat.albedoColor = color;
-    mat.metallic    = def.metalness ?? 0.1;
-    mat.roughness   = def.roughness ?? 0.7;
+    mat.metallic    = def.metalness ?? 0.3;  // increased from 0.1 for more realistic PBR
+    mat.roughness   = def.roughness ?? 0.6;  // slightly smoother (was 0.7)
     if (def.emissive) mat.emissiveColor = hexToColor3(def.emissive);
     if (def.emissiveIntensity !== undefined) mat.emissiveIntensity = def.emissiveIntensity;
     if (def.opacity !== undefined) { mat.alpha = def.opacity; }
     if (def.wireframe) mat.wireframe = true;
     if (def.textureUrl) mat.albedoTexture = new Texture(def.textureUrl, this.scene);
+    // Add normal map and roughness map support
+    if (def.normalMapUrl) mat.bumpTexture = new Texture(def.normalMapUrl, this.scene);
+    if (def.roughnessMapUrl) mat.metallicTexture = new Texture(def.roughnessMapUrl, this.scene);
     mesh.material = mat;
   }
 }

@@ -2,7 +2,7 @@
  * Command dispatcher — routes MCP action types to BabylonSceneManager methods.
  */
 import { BabylonSceneManager } from '../scene.js';
-import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, ParticleDef, Vec3 } from '../types.js';
+import { SceneState, SceneObject, SceneLight, SceneCamera, EnvironmentDef, ParticleDef, BehaviorDef, Vec3 } from '../types.js';
 
 export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown>): void {
   const action = cmd.action as string;
@@ -78,6 +78,14 @@ export function dispatch(scene: BabylonSceneManager, cmd: Record<string, unknown
       break;
     case 'deleteParticles':
       scene.deleteParticles(cmd['id'] as string);
+      break;
+
+    // ── Behaviors ────────────────────────────────────────────────────────────
+    case 'addBehavior':
+      scene.addBehavior(cmd as unknown as BehaviorDef);
+      break;
+    case 'removeBehavior':
+      scene.removeBehavior(cmd['id'] as string);
       break;
 
     // ── Full scene ───────────────────────────────────────────────────────────
