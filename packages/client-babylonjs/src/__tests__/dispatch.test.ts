@@ -34,71 +34,64 @@ describe('Babylon.js dispatch', () => {
     scene = makeMockScene();
   });
 
-  it('create-object routes to scene.createObject with payload', () => {
-    dispatch(scene as never, { action: 'create-object', payload: { id: 'box1', type: 'box' } });
-    expect(scene.createObject).toHaveBeenCalledWith({ id: 'box1', type: 'box' });
+  it('createObject routes to scene.createObject', () => {
+    dispatch(scene as never, { action: 'createObject', id: 'box1', type: 'box' });
+    expect(scene.createObject).toHaveBeenCalledWith(expect.objectContaining({ id: 'box1', type: 'box' }));
   });
 
-  it('update-object routes to scene.updateObject with payload', () => {
-    const payload = { id: 'box1', visible: false };
-    dispatch(scene as never, { action: 'update-object', payload });
-    expect(scene.updateObject).toHaveBeenCalledWith(payload);
+  it('updateObject routes to scene.updateObject', () => {
+    dispatch(scene as never, { action: 'updateObject', id: 'box1', visible: false });
+    expect(scene.updateObject).toHaveBeenCalledWith(expect.objectContaining({ id: 'box1', visible: false }));
   });
 
-  it('delete-object routes to scene.deleteObject with payload.id', () => {
-    dispatch(scene as never, { action: 'delete-object', payload: { id: 'box1' } });
+  it('deleteObject routes to scene.deleteObject with id', () => {
+    dispatch(scene as never, { action: 'deleteObject', id: 'box1' });
     expect(scene.deleteObject).toHaveBeenCalledWith('box1');
   });
 
-  it('create-light routes to scene.createLight with payload', () => {
-    const payload = { id: 'l1', lightType: 'point', color: '#fff', intensity: 1 };
-    dispatch(scene as never, { action: 'create-light', payload });
-    expect(scene.createLight).toHaveBeenCalledWith(payload);
+  it('createLight routes to scene.createLight', () => {
+    dispatch(scene as never, { action: 'createLight', id: 'l1', lightType: 'point', color: '#fff', intensity: 1 });
+    expect(scene.createLight).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1', lightType: 'point' }));
   });
 
-  it('update-light routes to scene.updateLight with payload', () => {
-    const payload = { id: 'l1', intensity: 0.5 };
-    dispatch(scene as never, { action: 'update-light', payload });
-    expect(scene.updateLight).toHaveBeenCalledWith(payload);
+  it('updateLight routes to scene.updateLight', () => {
+    dispatch(scene as never, { action: 'updateLight', id: 'l1', intensity: 0.5 });
+    expect(scene.updateLight).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1', intensity: 0.5 }));
   });
 
-  it('delete-light routes to scene.deleteLight with payload.id', () => {
-    dispatch(scene as never, { action: 'delete-light', payload: { id: 'l1' } });
+  it('deleteLight routes to scene.deleteLight with id', () => {
+    dispatch(scene as never, { action: 'deleteLight', id: 'l1' });
     expect(scene.deleteLight).toHaveBeenCalledWith('l1');
   });
 
-  it('set-camera routes to scene.setCamera with payload', () => {
-    const payload = { position: { x: 0, y: 5, z: 10 }, target: { x: 0, y: 0, z: 0 } };
-    dispatch(scene as never, { action: 'set-camera', payload });
-    expect(scene.setCamera).toHaveBeenCalledWith(payload);
+  it('setCamera routes to scene.setCamera', () => {
+    dispatch(scene as never, { action: 'setCamera', position: { x: 0, y: 5, z: 10 }, target: { x: 0, y: 0, z: 0 } });
+    expect(scene.setCamera).toHaveBeenCalledWith(expect.objectContaining({ position: expect.any(Object) }));
   });
 
-  it('fly-to-object routes to scene.flyToObject with id and distance', () => {
-    dispatch(scene as never, { action: 'fly-to-object', payload: { id: 'box1', distance: 3 } });
+  it('flyToObject routes to scene.flyToObject with id and distance', () => {
+    dispatch(scene as never, { action: 'flyToObject', id: 'box1', distance: 3 });
     expect(scene.flyToObject).toHaveBeenCalledWith('box1', 3);
   });
 
-  it('animate-object routes to scene.animateObject with all params', () => {
-    const payload = { id: 'box1', property: 'rotation', to: { x: 0, y: 90, z: 0 }, duration: 2, easing: 'easeOut', loop: false };
-    dispatch(scene as never, { action: 'animate-object', payload });
+  it('animateObject routes to scene.animateObject with all params', () => {
+    dispatch(scene as never, { action: 'animateObject', id: 'box1', property: 'rotation', to: { x: 0, y: 90, z: 0 }, duration: 2, easing: 'easeOut', loop: false });
     expect(scene.animateObject).toHaveBeenCalledWith('box1', 'rotation', { x: 0, y: 90, z: 0 }, 2, 'easeOut', false);
   });
 
-  it('stop-animation routes to scene.stopAnimation with payload.id', () => {
-    dispatch(scene as never, { action: 'stop-animation', payload: { id: 'box1' } });
+  it('stopAnimation routes to scene.stopAnimation with id', () => {
+    dispatch(scene as never, { action: 'stopAnimation', id: 'box1' });
     expect(scene.stopAnimation).toHaveBeenCalledWith('box1');
   });
 
-  it('set-environment routes to scene.setEnvironment with payload', () => {
-    const payload = { background: '#000011' };
-    dispatch(scene as never, { action: 'set-environment', payload });
-    expect(scene.setEnvironment).toHaveBeenCalledWith(payload);
+  it('setEnvironment routes to scene.setEnvironment', () => {
+    dispatch(scene as never, { action: 'setEnvironment', background: '#000011' });
+    expect(scene.setEnvironment).toHaveBeenCalledWith(expect.objectContaining({ background: '#000011' }));
   });
 
-  it('load-scene routes to scene.loadScene with payload', () => {
-    const payload = { objects: {}, lights: {}, camera: {}, environment: {} };
-    dispatch(scene as never, { action: 'load-scene', payload });
-    expect(scene.loadScene).toHaveBeenCalledWith(payload);
+  it('loadScene routes to scene.loadScene', () => {
+    dispatch(scene as never, { action: 'loadScene', objects: {}, lights: {}, camera: {}, environment: {} });
+    expect(scene.loadScene).toHaveBeenCalled();
   });
 
   it('unknown action calls no scene method', () => {

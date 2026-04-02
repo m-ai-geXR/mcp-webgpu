@@ -5,7 +5,7 @@
  * message-level `type: 'command'` field, so we map it back here.
  */
 import { useSceneStore } from '../store/sceneStore.js';
-import { ActiveAnimation, AnimationDef, ParticleDef, BehaviorDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState } from '../types.js';
+import { ActiveAnimation, AnimationDef, ParticleDef, BehaviorDef, SceneObject, SceneLight, SceneCamera, EnvironmentDef, SceneState, Vec3 } from '../types.js';
 
 type Cmd = Record<string, unknown>;
 
@@ -117,12 +117,15 @@ export function dispatch(cmd: Cmd): string | null {
         for (const anim of Object.values(state.animations) as AnimationDef[]) {
           const obj = freshStore.objects[anim.id];
           if (!obj) continue;
+          // Skip material animations for now (would need material property handling)
+          if (anim.property.startsWith('material.')) continue;
           const from = obj[anim.property as 'position' | 'rotation' | 'scale'] ?? { x: 0, y: 0, z: 0 };
+          const to = anim.to as Vec3;
           const active: ActiveAnimation = {
             id: anim.id,
             property: anim.property as 'position' | 'rotation' | 'scale',
             fromX: (from as { x: number }).x, fromY: (from as { y: number }).y, fromZ: (from as { z: number }).z,
-            toX: anim.to.x, toY: anim.to.y, toZ: anim.to.z,
+            toX: to.x, toY: to.y, toZ: to.z,
             startTime: performance.now(),
             duration: (anim.duration ?? 1) * 1000,
             easing: (anim.easing as ActiveAnimation['easing']) ?? 'linear',
