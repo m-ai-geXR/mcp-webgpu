@@ -594,9 +594,10 @@ export class SceneManager {
       if (env.bloom.threshold !== undefined) this.bloomPass.threshold = env.bloom.threshold;
     }
     if (env.chromaticAberration) {
+      const offset = env.chromaticAberration.offset ?? 0;
       if (!this.chromaticAberrationPass) {
         const caShader = {
-          uniforms: { tDiffuse: { value: null }, offset: { value: env.chromaticAberration.offset ?? 0.005 } },
+          uniforms: { tDiffuse: { value: null }, offset: { value: offset } },
           vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
           fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; varying vec2 vUv;
             void main() {
@@ -611,8 +612,10 @@ export class SceneManager {
         const passes = this.composer.passes;
         this.composer.insertPass(this.chromaticAberrationPass, passes.length - 1);
       } else {
-        this.chromaticAberrationPass.uniforms['offset'].value = env.chromaticAberration.offset;
+        this.chromaticAberrationPass.uniforms['offset'].value = offset;
       }
+      // Enable/disable pass based on offset value
+      this.chromaticAberrationPass.enabled = offset > 0;
     }
     if (env.vignette) {
       if (!this.vignettePass) {

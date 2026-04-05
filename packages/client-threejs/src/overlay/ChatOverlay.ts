@@ -207,7 +207,7 @@ export class ChatOverlay {
     this.chromaticAberration.addEventListener('input', () => {
       const value = parseFloat(this.chromaticAberration.value);
       this.chromaticAberrationValue.textContent = value.toFixed(3);
-      this.onEnvironmentChange({ chromaticAberration: value });
+      this.onEnvironmentChange({ chromaticAberration: { offset: value } });
     });
   }
 
