@@ -43,6 +43,8 @@ export class ChatOverlay {
   private fogFarValue: HTMLElement;
   private exposure: HTMLInputElement;
   private exposureValue: HTMLElement;
+  private chromaticAberration: HTMLInputElement;
+  private chromaticAberrationValue: HTMLElement;
 
   constructor(
     onSend: (message: string) => void,
@@ -81,6 +83,8 @@ export class ChatOverlay {
     this.fogFarValue = document.getElementById('fog-far-value')!;
     this.exposure = document.getElementById('exposure') as HTMLInputElement;
     this.exposureValue = document.getElementById('exposure-value')!;
+    this.chromaticAberration = document.getElementById('chromatic-aberration') as HTMLInputElement;
+    this.chromaticAberrationValue = document.getElementById('chromatic-aberration-value')!;
 
     document.getElementById('chat-header')!.addEventListener('click', (e) => {
       // Don't toggle when clicking dropdowns
@@ -197,6 +201,13 @@ export class ChatOverlay {
       const value = parseFloat(this.exposure.value);
       this.exposureValue.textContent = value.toFixed(1);
       this.onEnvironmentChange({ exposure: value });
+    });
+
+    // Chromatic Aberration
+    this.chromaticAberration.addEventListener('input', () => {
+      const value = parseFloat(this.chromaticAberration.value);
+      this.chromaticAberrationValue.textContent = value.toFixed(3);
+      this.onEnvironmentChange({ chromaticAberration: value });
     });
   }
 
