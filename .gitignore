@@ -9,3 +9,6 @@ build/
 # User-saved scenes (keep folder, ignore contents)
 scenes/*.json
 scenes/*.html
+
+# Documentation and screenshots
+docs/
