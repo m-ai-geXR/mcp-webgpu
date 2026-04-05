@@ -112,6 +112,10 @@ export class WSClient {
     this.send({ type: 'update-parameters', temperature, topP });
   }
 
+  sendEnvironment(environment: Record<string, unknown>): void {
+    this.send({ type: 'update-environment', environment });
+  }
+
   sendClearScene(): void {
     this.send({ type: 'clear-scene' });
   }

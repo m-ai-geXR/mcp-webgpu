@@ -32,6 +32,7 @@ whenReady(() => {
     (provider, model) => { wsClient.sendSwitchProvider(provider, model); },
     (prompt) => { wsClient.sendSystemPrompt(prompt); },
     (temperature, topP) => { wsClient.sendParameters(temperature, topP); },
+    (environment) => { wsClient.sendEnvironment(environment); },
   );
 
   // ── VR chat panel helpers ──────────────────────────────────────────────

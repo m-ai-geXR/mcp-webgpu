@@ -164,6 +164,7 @@ export type WSMessageType =
   | 'provider-config'
   | 'update-system-prompt'
   | 'update-parameters'
+  | 'update-environment'
   | 'clear-scene';
 
 export interface WSMessage {

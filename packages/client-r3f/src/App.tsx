@@ -42,6 +42,7 @@ export function App() {
       (provider, model) => wsRef.current?.sendSwitchProvider(provider, model),
       (prompt) => wsRef.current?.sendSystemPrompt(prompt),
       (temperature, topP) => wsRef.current?.sendParameters(temperature, topP),
+      (environment) => wsRef.current?.sendEnvironment(environment),
     );
 
     // WebSocket client

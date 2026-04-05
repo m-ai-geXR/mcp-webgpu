@@ -21,6 +21,7 @@ export class ChatOverlay {
   private onSwitch: (provider: string, model?: string) => void;
   private onSystemPromptChange: (prompt: string) => void;
   private onParametersChange: (temperature: number, topP: number) => void;
+  private onEnvironmentChange: (environment: Record<string, unknown>) => void;
   private providerSelect: HTMLSelectElement;
   private modelSelect: HTMLSelectElement;
   private systemPromptTextarea: HTMLTextAreaElement;
@@ -30,16 +31,31 @@ export class ChatOverlay {
   private toppValue: HTMLElement;
   private providers: ProviderInfo[] = [];
 
+  // Scene control elements
+  private bloomStrength: HTMLInputElement;
+  private bloomStrengthValue: HTMLElement;
+  private bloomThreshold: HTMLInputElement;
+  private bloomThresholdValue: HTMLElement;
+  private backgroundColor: HTMLInputElement;
+  private fogNear: HTMLInputElement;
+  private fogNearValue: HTMLElement;
+  private fogFar: HTMLInputElement;
+  private fogFarValue: HTMLElement;
+  private exposure: HTMLInputElement;
+  private exposureValue: HTMLElement;
+
   constructor(
     onSend: (message: string) => void,
     onSwitch: (provider: string, model?: string) => void,
     onSystemPromptChange: (prompt: string) => void,
     onParametersChange: (temperature: number, topP: number) => void,
+    onEnvironmentChange: (environment: Record<string, unknown>) => void,
   ) {
     this.onSend = onSend;
     this.onSwitch = onSwitch;
     this.onSystemPromptChange = onSystemPromptChange;
     this.onParametersChange = onParametersChange;
+    this.onEnvironmentChange = onEnvironmentChange;
 
     this.panel    = document.getElementById('chat-panel')!;
     this.messages = document.getElementById('chat-messages')!;
@@ -52,6 +68,19 @@ export class ChatOverlay {
     this.temperatureValue = document.getElementById('temperature-value')!;
     this.toppSlider = document.getElementById('topp-slider') as HTMLInputElement;
     this.toppValue = document.getElementById('topp-value')!;
+
+    // Scene control elements
+    this.bloomStrength = document.getElementById('bloom-strength') as HTMLInputElement;
+    this.bloomStrengthValue = document.getElementById('bloom-strength-value')!;
+    this.bloomThreshold = document.getElementById('bloom-threshold') as HTMLInputElement;
+    this.bloomThresholdValue = document.getElementById('bloom-threshold-value')!;
+    this.backgroundColor = document.getElementById('background-color') as HTMLInputElement;
+    this.fogNear = document.getElementById('fog-near') as HTMLInputElement;
+    this.fogNearValue = document.getElementById('fog-near-value')!;
+    this.fogFar = document.getElementById('fog-far') as HTMLInputElement;
+    this.fogFarValue = document.getElementById('fog-far-value')!;
+    this.exposure = document.getElementById('exposure') as HTMLInputElement;
+    this.exposureValue = document.getElementById('exposure-value')!;
 
     document.getElementById('chat-header')!.addEventListener('click', (e) => {
       // Don't toggle when clicking dropdowns
@@ -121,6 +150,53 @@ export class ChatOverlay {
       const value = parseFloat(this.toppSlider.value);
       this.toppValue.textContent = value.toFixed(1);
       this.onParametersChange(parseFloat(this.temperatureSlider.value), value);
+    });
+
+    // Toggle scene controls panel
+    document.getElementById('scene-controls-toggle')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const section = document.getElementById('scene-controls-section');
+      if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Bloom strength
+    this.bloomStrength.addEventListener('input', () => {
+      const value = parseFloat(this.bloomStrength.value);
+      this.bloomStrengthValue.textContent = value.toFixed(1);
+      this.onEnvironmentChange({ bloom: { strength: value } });
+    });
+
+    // Bloom threshold
+    this.bloomThreshold.addEventListener('input', () => {
+      const value = parseFloat(this.bloomThreshold.value);
+      this.bloomThresholdValue.textContent = value.toFixed(2);
+      this.onEnvironmentChange({ bloom: { threshold: value } });
+    });
+
+    // Background color
+    this.backgroundColor.addEventListener('input', () => {
+      this.onEnvironmentChange({ background: this.backgroundColor.value });
+    });
+
+    // Fog near
+    this.fogNear.addEventListener('input', () => {
+      const value = parseFloat(this.fogNear.value);
+      this.fogNearValue.textContent = value.toFixed(0);
+      this.onEnvironmentChange({ fog: { near: value } });
+    });
+
+    // Fog far
+    this.fogFar.addEventListener('input', () => {
+      const value = parseFloat(this.fogFar.value);
+      this.fogFarValue.textContent = value.toFixed(0);
+      this.onEnvironmentChange({ fog: { far: value } });
+    });
+
+    // Exposure
+    this.exposure.addEventListener('input', () => {
+      const value = parseFloat(this.exposure.value);
+      this.exposureValue.textContent = value.toFixed(1);
+      this.onEnvironmentChange({ exposure: value });
     });
   }
 

@@ -20,6 +20,7 @@ function main(): void {
     (provider, model) => wsClient.sendSwitchProvider(provider, model),
     (prompt) => wsClient.sendSystemPrompt(prompt),
     (temperature, topP) => wsClient.sendParameters(temperature, topP),
+    (environment) => wsClient.sendEnvironment(environment),
   );
 
   wsClient = new WSClient(WS_URL, FRAMEWORK, {

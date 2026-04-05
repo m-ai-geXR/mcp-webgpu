@@ -261,6 +261,17 @@ export class WSServer {
         break;
       }
 
+      case 'update-environment': {
+        const envUpdate = msg as unknown as { environment?: Record<string, unknown> };
+        if (this.stateManager && envUpdate.environment) {
+          const currentState = this.stateManager.getState();
+          currentState.environment = { ...currentState.environment, ...envUpdate.environment };
+          this.sendCommand({ action: 'setEnvironment', commandId: uuidv4(), ...envUpdate.environment });
+          console.error(`[WSServer] Environment updated by ${sessionId}:`, Object.keys(envUpdate.environment).join(', '));
+        }
+        break;
+      }
+
       case 'clear-scene': {
         if (this.stateManager) {
           this.stateManager.clearScene();

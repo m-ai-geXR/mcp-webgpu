@@ -373,6 +373,99 @@
         margin-top: 2px;
       }
 
+      /* ── Scene controls section ────────────────────── */
+      #scene-controls-section {
+        padding: 8px 14px 10px;
+        border-bottom: 1px solid rgba(100,100,220,0.15);
+        display: none;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .scene-control {
+        margin-bottom: 10px;
+      }
+
+      .scene-control:last-child {
+        margin-bottom: 0;
+      }
+
+      .scene-control-label {
+        font-size: 10px;
+        color: #818cf8;
+        font-weight: 600;
+        margin-bottom: 4px;
+        display: block;
+      }
+
+      .scene-control input[type="range"] {
+        width: 100%;
+        height: 4px;
+        border-radius: 2px;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+        background: linear-gradient(to right, #4f46e5 0%, #818cf8 100%);
+      }
+
+      .scene-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #4f46e5;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+
+      .scene-control input[type="range"]::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #4f46e5;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+
+      .scene-control input[type="color"] {
+        width: 100%;
+        height: 32px;
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.05);
+        cursor: pointer;
+      }
+
+      .scene-control-value {
+        float: right;
+        font-size: 10px;
+        color: #a5b4fc;
+        font-weight: 600;
+      }
+
+      .scene-control-hint {
+        font-size: 9px;
+        color: #4b5563;
+        margin-top: 2px;
+      }
+
+      .scene-control input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #4f46e5;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       /* ── Clear / action buttons ─────────────────── */
       #chat-action-row {
         display: flex;
@@ -481,6 +574,64 @@
             <span>1.0 - Diverse</span>
           </div>
           <div class="param-description">Controls vocabulary diversity. Lower values focus on most likely words.</div>
+        </div>
+      </div>
+      <div id="scene-controls-toggle" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; cursor: pointer; user-select: none; border-bottom: 1px solid rgba(100,100,220,0.15); font-size: 11px; color: #818cf8; font-weight: 600;">
+        🎨 Scene Controls ▾
+      </div>
+      <div id="scene-controls-section">
+        <!-- Bloom Strength -->
+        <div class="scene-control">
+          <label class="scene-control-label">
+            Bloom Strength
+            <span class="scene-control-value" id="bloom-strength-value">0.8</span>
+          </label>
+          <input type="range" id="bloom-strength" min="0" max="2" step="0.1" value="0.8">
+          <div class="scene-control-hint">Glow intensity around bright objects</div>
+        </div>
+
+        <!-- Bloom Threshold -->
+        <div class="scene-control">
+          <label class="scene-control-label">
+            Bloom Threshold
+            <span class="scene-control-value" id="bloom-threshold-value">0.5</span>
+          </label>
+          <input type="range" id="bloom-threshold" min="0" max="1" step="0.05" value="0.5">
+          <div class="scene-control-hint">Minimum brightness to glow</div>
+        </div>
+
+        <!-- Background Color -->
+        <div class="scene-control">
+          <label class="scene-control-label">Background Color</label>
+          <input type="color" id="background-color" value="#1a1a2e">
+        </div>
+
+        <!-- Fog Near -->
+        <div class="scene-control">
+          <label class="scene-control-label">
+            Fog Near Distance
+            <span class="scene-control-value" id="fog-near-value">50</span>
+          </label>
+          <input type="range" id="fog-near" min="0" max="200" step="5" value="50">
+        </div>
+
+        <!-- Fog Far -->
+        <div class="scene-control">
+          <label class="scene-control-label">
+            Fog Far Distance
+            <span class="scene-control-value" id="fog-far-value">200</span>
+          </label>
+          <input type="range" id="fog-far" min="50" max="500" step="10" value="200">
+        </div>
+
+        <!-- Exposure -->
+        <div class="scene-control">
+          <label class="scene-control-label">
+            Exposure
+            <span class="scene-control-value" id="exposure-value">1.0</span>
+          </label>
+          <input type="range" id="exposure" min="0.1" max="3" step="0.1" value="1.0">
+          <div class="scene-control-hint">Overall scene brightness</div>
         </div>
       </div>
       <div id="chat-action-row">
