@@ -180,8 +180,9 @@ Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROV
 
 | Prompt | Description |
 |---|---|
-| `3d-world-assistant` | Full system context for AI assistants — scene tools, chat workflow, incremental update rules |
+| `3d-world-assistant` | Full system context for AI assistants — scene tools, chat workflow, incremental update rules, **10+ advanced demo recipes** (galaxy, DNA helix, neon tunnel, crystal cluster, etc.) |
 | `framework-guide` | Per-framework geometry/material/lighting tips. Accepts `framework` argument: `threejs`, `aframe`, `babylonjs`, `r3f` |
+| `demo-showcase` | **NEW**: Instant access to 10+ stunning pre-built demo templates. Perfect for quick impressive visualizations. Accepts `style` argument: `galaxy`, `dna`, `tunnel`, `crystals`, `geometries`, `wave`, `spiral`, `orbit`, `explosion`, `all` |
 
 ---
 

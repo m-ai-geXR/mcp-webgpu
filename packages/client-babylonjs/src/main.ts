@@ -19,6 +19,7 @@ function main(): void {
     (msg) => wsClient.sendUserChat(msg),
     (provider, model) => wsClient.sendSwitchProvider(provider, model),
     (prompt) => wsClient.sendSystemPrompt(prompt),
+    (temperature, topP) => wsClient.sendParameters(temperature, topP),
   );
 
   wsClient = new WSClient(WS_URL, FRAMEWORK, {

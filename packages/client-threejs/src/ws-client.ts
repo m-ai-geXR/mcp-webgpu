@@ -126,6 +126,10 @@ export class WSClient {
     this.send({ type: 'update-system-prompt', prompt });
   }
 
+  sendParameters(temperature: number, topP: number): void {
+    this.send({ type: 'update-parameters', temperature, topP });
+  }
+
   sendClearScene(): void {
     this.send({ type: 'clear-scene' });
   }

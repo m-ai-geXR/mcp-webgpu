@@ -145,6 +145,126 @@
       margin-top: 4px;
     }
 
+    /* ── Model parameters section ────────────────────── */
+    #model-parameters-section {
+      padding: 8px 12px 10px;
+      border-bottom: 1px solid rgba(100,120,200,0.15);
+      display: none;
+    }
+
+    .param-control {
+      margin-bottom: 12px;
+    }
+
+    .param-control:last-child {
+      margin-bottom: 0;
+    }
+
+    .param-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .param-label {
+      font-size: 10px;
+      color: rgba(100,150,255,.8);
+      font-weight: 600;
+    }
+
+    .param-value {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .param-value.temp {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .param-value.topp {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .param-slider {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .param-slider.temp {
+      background: linear-gradient(to right, #3b82f6 0%, #ef4444 50%, #f97316 100%);
+    }
+
+    .param-slider.topp {
+      background: linear-gradient(to right, #6366f1 0%, #8b5cf6 100%);
+    }
+
+    .param-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #4f46e5;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .param-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #4f46e5;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .param-slider.temp::-webkit-slider-thumb {
+      border-color: #ef4444;
+    }
+
+    .param-slider.temp::-moz-range-thumb {
+      border-color: #ef4444;
+    }
+
+    .param-slider.topp::-webkit-slider-thumb {
+      border-color: #8b5cf6;
+    }
+
+    .param-slider.topp::-moz-range-thumb {
+      border-color: #8b5cf6;
+    }
+
+    .param-hint {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #506080;
+      margin-top: 2px;
+    }
+
+    .param-description {
+      font-size: 9px;
+      color: #6b7280;
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+
     /* ── Clear / action buttons ─────────────────── */
     #chat-action-row {
       display: flex;
@@ -219,6 +339,36 @@
     <div id="system-prompt-section">
       <textarea id="system-prompt" spellcheck="false" placeholder="System prompt…"></textarea>
       <div class="prompt-hint">Ctrl+Enter or click away to save</div>
+    </div>
+    <div id="model-parameters-toggle" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; cursor: pointer; user-select: none; border-bottom: 1px solid rgba(100,120,200,0.15); font-size: 11px; color: rgba(100,150,255,.8); font-weight: 600;">
+      🎛 Model Parameters ▾
+    </div>
+    <div id="model-parameters-section">
+      <div class="param-control">
+        <div class="param-header">
+          <span class="param-label">Temperature</span>
+          <span class="param-value temp" id="temperature-value">0.7</span>
+        </div>
+        <input type="range" id="temperature-slider" class="param-slider temp"
+               min="0" max="2" step="0.1" value="0.7">
+        <div class="param-hint">
+          <span>0.0 - Focused</span>
+          <span>2.0 - Creative</span>
+        </div>
+      </div>
+      <div class="param-control">
+        <div class="param-header">
+          <span class="param-label">Top-p (Nucleus Sampling)</span>
+          <span class="param-value topp" id="topp-value">0.9</span>
+        </div>
+        <input type="range" id="topp-slider" class="param-slider topp"
+               min="0.1" max="1.0" step="0.1" value="0.9">
+        <div class="param-hint">
+          <span>0.1 - Precise</span>
+          <span>1.0 - Diverse</span>
+        </div>
+        <div class="param-description">Controls vocabulary diversity. Lower values focus on most likely words.</div>
+      </div>
     </div>
     <div id="chat-action-row">
       <button id="clear-scene-btn">🗑 Clear Scene</button>

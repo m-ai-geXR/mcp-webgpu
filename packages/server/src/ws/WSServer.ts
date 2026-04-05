@@ -251,6 +251,16 @@ export class WSServer {
         break;
       }
 
+      case 'update-parameters': {
+        const { temperature, topP } = msg as unknown as { temperature?: number; topP?: number };
+        if (this.chatRelay) {
+          if (temperature !== undefined) this.chatRelay.setTemperature(temperature);
+          if (topP !== undefined) this.chatRelay.setTopP(topP);
+          console.error(`[WSServer] Parameters updated by ${sessionId}: temp=${temperature?.toFixed(1)}, topP=${topP?.toFixed(1)}`);
+        }
+        break;
+      }
+
       case 'clear-scene': {
         if (this.stateManager) {
           this.stateManager.clearScene();

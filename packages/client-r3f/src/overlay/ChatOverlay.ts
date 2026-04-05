@@ -18,24 +18,35 @@ export class ChatOverlay {
   private expanded   = false;
   private onSwitch: (provider: string, model?: string) => void;
   private onSystemPromptChange: (prompt: string) => void;
+  private onParametersChange: (temperature: number, topP: number) => void;
   private providerSelect: HTMLSelectElement;
   private modelSelect: HTMLSelectElement;
   private systemPromptTextarea: HTMLTextAreaElement;
+  private temperatureSlider: HTMLInputElement;
+  private temperatureValue: HTMLElement;
+  private toppSlider: HTMLInputElement;
+  private toppValue: HTMLElement;
   private providers: ProviderInfo[] = [];
 
   constructor(
     private readonly onSend: (msg: string) => void,
     onSwitch: (provider: string, model?: string) => void = () => {},
     onSystemPromptChange: (prompt: string) => void = () => {},
+    onParametersChange: (temperature: number, topP: number) => void = () => {},
   ) {
     this.onSwitch = onSwitch;
     this.onSystemPromptChange = onSystemPromptChange;
+    this.onParametersChange = onParametersChange;
     this.container = document.getElementById('chat-overlay')!;
     this.msgList   = document.getElementById('chat-messages')!;
     this.input     = document.getElementById('chat-input') as HTMLInputElement;
     this.providerSelect = document.getElementById('provider-select') as HTMLSelectElement;
     this.modelSelect    = document.getElementById('model-select') as HTMLSelectElement;
     this.systemPromptTextarea = document.getElementById('system-prompt') as HTMLTextAreaElement;
+    this.temperatureSlider = document.getElementById('temperature-slider') as HTMLInputElement;
+    this.temperatureValue = document.getElementById('temperature-value')!;
+    this.toppSlider = document.getElementById('topp-slider') as HTMLInputElement;
+    this.toppValue = document.getElementById('topp-value')!;
 
     document.getElementById('chat-header')!.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.model-selector')) return;
@@ -77,6 +88,27 @@ export class ChatOverlay {
       e.stopPropagation();
       const section = document.getElementById('system-prompt-section');
       if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Toggle model parameters panel
+    document.getElementById('model-parameters-toggle')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const section = document.getElementById('model-parameters-section');
+      if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Temperature slider
+    this.temperatureSlider.addEventListener('input', () => {
+      const value = parseFloat(this.temperatureSlider.value);
+      this.temperatureValue.textContent = value.toFixed(1);
+      this.onParametersChange(value, parseFloat(this.toppSlider.value));
+    });
+
+    // Top-p slider
+    this.toppSlider.addEventListener('input', () => {
+      const value = parseFloat(this.toppSlider.value);
+      this.toppValue.textContent = value.toFixed(1);
+      this.onParametersChange(parseFloat(this.temperatureSlider.value), value);
     });
   }
 

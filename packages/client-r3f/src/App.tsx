@@ -41,6 +41,7 @@ export function App() {
       (msg) => { wsRef.current?.sendUserChat(msg); addVrMessage('user', msg); },
       (provider, model) => wsRef.current?.sendSwitchProvider(provider, model),
       (prompt) => wsRef.current?.sendSystemPrompt(prompt),
+      (temperature, topP) => wsRef.current?.sendParameters(temperature, topP),
     );
 
     // WebSocket client

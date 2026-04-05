@@ -359,7 +359,212 @@ I'll create a dramatic neon environment with glowing elements and intense bloom.
 \`\`\`
 
 Always aim for visually rich, layered scenes appropriate to the requested style.
-Balance artistic vision with performance (don't overload with too many objects/particles).`;
+Balance artistic vision with performance (don't overload with too many objects/particles).
+
+═══ ADVANCED DEMO TEMPLATES ═══
+
+When users request impressive demos, "something cool", or specific effects, use these proven templates:
+
+DEMO 1: PARTICLE GALAXY
+Dark space environment with spiral of glowing orbs + star particles + bloom
+\`\`\`json
+[
+  {"action":"setEnvironment","background":"#000005","bloom":{"strength":0.8,"threshold":0.5,"radius":0.4},"fog":{"color":"#000010","near":20,"far":60}},
+  {"action":"createParticles","id":"stars","count":1000,"spread":{"x":50,"y":50,"z":50},"size":0.03,"color":"#ffffff","emissive":"#ffffff","emissiveIntensity":1,"opacity":0.8,"blending":"additive","twinkle":true},
+  {"action":"createObject","id":"orb0","type":"sphere","position":{"x":3,"y":0.5,"z":0},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb1","type":"sphere","position":{"x":2.6,"y":0.5,"z":1.5},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb2","type":"sphere","position":{"x":1.5,"y":0.5,"z":2.6},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#00ff88","emissive":"#00ff88","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb3","type":"sphere","position":{"x":0,"y":0.5,"z":3},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#ffaa00","emissive":"#ffaa00","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb4","type":"sphere","position":{"x":-1.5,"y":0.5,"z":2.6},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb5","type":"sphere","position":{"x":-2.6,"y":0.5,"z":1.5},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb6","type":"sphere","position":{"x":-3,"y":0.5,"z":0},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"orb7","type":"sphere","position":{"x":-2.6,"y":0.5,"z":-1.5},"scale":{"x":0.4,"y":0.4,"z":0.4},"material":{"color":"#00ff88","emissive":"#00ff88","emissiveIntensity":2.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#1a1a3e","intensity":0.2},
+  {"action":"addBehavior","id":"orb0_spin","objectId":"orb0","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb1_spin","objectId":"orb1","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb2_spin","objectId":"orb2","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb3_spin","objectId":"orb3","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb4_spin","objectId":"orb4","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb5_spin","objectId":"orb5","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb6_spin","objectId":"orb6","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}},
+  {"action":"addBehavior","id":"orb7_spin","objectId":"orb7","type":"orbit","params":{"radius":3,"speed":0.5,"centerX":0,"centerZ":0}}
+]
+\`\`\`
+
+DEMO 2: DNA HELIX
+Counter-rotating double helix with connecting rungs
+\`\`\`json
+[
+  {"action":"setEnvironment","background":"#050510","bloom":{"strength":0.8,"threshold":0.5,"radius":0.4},"vignette":{"darkness":0.4}},
+  {"action":"createObject","id":"h1_0","type":"sphere","position":{"x":2,"y":-3,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_0","type":"sphere","position":{"x":-2,"y":-3,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_1","type":"sphere","position":{"x":0,"y":-2.5,"z":2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_1","type":"sphere","position":{"x":0,"y":-2.5,"z":-2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_2","type":"sphere","position":{"x":-2,"y":-2,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_2","type":"sphere","position":{"x":2,"y":-2,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_3","type":"sphere","position":{"x":0,"y":-1.5,"z":-2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_3","type":"sphere","position":{"x":0,"y":-1.5,"z":2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_4","type":"sphere","position":{"x":2,"y":-1,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_4","type":"sphere","position":{"x":-2,"y":-1,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_5","type":"sphere","position":{"x":0,"y":-0.5,"z":2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_5","type":"sphere","position":{"x":0,"y":-0.5,"z":-2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_6","type":"sphere","position":{"x":-2,"y":0,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_6","type":"sphere","position":{"x":2,"y":0,"z":0},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h1_7","type":"sphere","position":{"x":0,"y":0.5,"z":-2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createObject","id":"h2_7","type":"sphere","position":{"x":0,"y":0.5,"z":2},"scale":{"x":0.3,"y":0.3,"z":0.3},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"metalness":0.7,"roughness":0.2}},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#1a1a3e","intensity":0.3},
+  {"action":"createLight","id":"cyan","lightType":"point","color":"#00ffff","intensity":2,"position":{"x":2,"y":0,"z":0}},
+  {"action":"createLight","id":"magenta","lightType":"point","color":"#ff00ff","intensity":2,"position":{"x":-2,"y":0,"z":0}},
+  {"action":"addBehavior","id":"helix_spin","objectId":"h1_0","type":"spin","params":{"speedY":0.3}}
+]
+\`\`\`
+
+DEMO 3: PLATONIC SOLIDS SHOWCASE
+Five sacred geometries rotating with different speeds
+\`\`\`json
+[
+  {"action":"setEnvironment","background":"#0a0a0f","bloom":{"strength":0.6,"threshold":0.6,"radius":0.4},"vignette":{"darkness":0.3}},
+  {"action":"createObject","id":"icosa","type":"icosahedron","position":{"x":-6,"y":1,"z":0},"scale":{"x":1.2,"y":1.2,"z":1.2},"material":{"color":"#ff3366","emissive":"#ff3366","emissiveIntensity":1.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"dodeca","type":"dodecahedron","position":{"x":-3,"y":1,"z":0},"scale":{"x":1.2,"y":1.2,"z":1.2},"material":{"color":"#ffaa00","emissive":"#ffaa00","emissiveIntensity":1.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"octa","type":"octahedron","position":{"x":0,"y":1,"z":0},"scale":{"x":1.5,"y":1.5,"z":1.5},"material":{"color":"#00ff88","emissive":"#00ff88","emissiveIntensity":1.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"tetra","type":"tetrahedron","position":{"x":3,"y":1,"z":0},"scale":{"x":1.5,"y":1.5,"z":1.5},"material":{"color":"#00aaff","emissive":"#00aaff","emissiveIntensity":1.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createObject","id":"knot","type":"torusKnot","position":{"x":6,"y":1,"z":0},"scale":{"x":0.8,"y":0.8,"z":0.8},"material":{"color":"#aa00ff","emissive":"#aa00ff","emissiveIntensity":1.5,"metalness":0.8,"roughness":0.2}},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#ffffff","intensity":0.2},
+  {"action":"createLight","id":"l1","lightType":"point","color":"#ff3366","intensity":1.5,"position":{"x":-6,"y":2,"z":0}},
+  {"action":"createLight","id":"l2","lightType":"point","color":"#ffaa00","intensity":1.5,"position":{"x":-3,"y":2,"z":0}},
+  {"action":"createLight","id":"l3","lightType":"point","color":"#00ff88","intensity":1.5,"position":{"x":0,"y":2,"z":0}},
+  {"action":"createLight","id":"l4","lightType":"point","color":"#00aaff","intensity":1.5,"position":{"x":3,"y":2,"z":0}},
+  {"action":"createLight","id":"l5","lightType":"point","color":"#aa00ff","intensity":1.5,"position":{"x":6,"y":2,"z":0}},
+  {"action":"addBehavior","id":"spin1","objectId":"icosa","type":"spin","params":{"speedX":0.5,"speedY":1,"speedZ":0.3}},
+  {"action":"addBehavior","id":"spin2","objectId":"dodeca","type":"spin","params":{"speedX":0.3,"speedY":0.8,"speedZ":0.5}},
+  {"action":"addBehavior","id":"spin3","objectId":"octa","type":"spin","params":{"speedX":0.7,"speedY":1.2,"speedZ":0.2}},
+  {"action":"addBehavior","id":"spin4","objectId":"tetra","type":"spin","params":{"speedX":0.4,"speedY":0.6,"speedZ":0.8}},
+  {"action":"addBehavior","id":"spin5","objectId":"knot","type":"spin","params":{"speedX":0.6,"speedY":1.5,"speedZ":0.4}},
+  {"action":"addBehavior","id":"bob1","objectId":"icosa","type":"bob","params":{"amplitude":0.3,"speed":1}},
+  {"action":"addBehavior","id":"bob2","objectId":"dodeca","type":"bob","params":{"amplitude":0.4,"speed":1.3}},
+  {"action":"addBehavior","id":"bob3","objectId":"octa","type":"bob","params":{"amplitude":0.35,"speed":0.9}},
+  {"action":"addBehavior","id":"bob4","objectId":"tetra","type":"bob","params":{"amplitude":0.45,"speed":1.1}},
+  {"action":"addBehavior","id":"bob5","objectId":"knot","type":"bob","params":{"amplitude":0.5,"speed":0.7}}
+]
+\`\`\`
+
+DEMO 4: NEON TUNNEL
+Receding rings with intense bloom and chromatic aberration
+\`\`\`json
+[
+  {"action":"setEnvironment","background":"#000000","bloom":{"strength":0.9,"threshold":0.4,"radius":0.5},"chromaticAberration":{"offset":0.3},"fog":{"color":"#ff00ff","near":15,"far":30},"vignette":{"darkness":0.6}},
+  {"action":"createObject","id":"ring0","type":"ring","position":{"x":0,"y":0,"z":0},"scale":{"x":4,"y":4,"z":0.3},"innerRadius":0.7,"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring1","type":"ring","position":{"x":0,"y":0,"z":-2.5},"scale":{"x":3.8,"y":3.8,"z":0.3},"innerRadius":0.7,"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring2","type":"ring","position":{"x":0,"y":0,"z":-5},"scale":{"x":3.6,"y":3.6,"z":0.3},"innerRadius":0.7,"material":{"color":"#00ff00","emissive":"#00ff00","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring3","type":"ring","position":{"x":0,"y":0,"z":-7.5},"scale":{"x":3.4,"y":3.4,"z":0.3},"innerRadius":0.7,"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring4","type":"ring","position":{"x":0,"y":0,"z":-10},"scale":{"x":3.2,"y":3.2,"z":0.3},"innerRadius":0.7,"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring5","type":"ring","position":{"x":0,"y":0,"z":-12.5},"scale":{"x":3,"y":3,"z":0.3},"innerRadius":0.7,"material":{"color":"#00ff00","emissive":"#00ff00","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring6","type":"ring","position":{"x":0,"y":0,"z":-15},"scale":{"x":2.8,"y":2.8,"z":0.3},"innerRadius":0.7,"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createObject","id":"ring7","type":"ring","position":{"x":0,"y":0,"z":-17.5},"scale":{"x":2.6,"y":2.6,"z":0.3},"innerRadius":0.7,"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":2.5,"metalness":0.9,"roughness":0.1}},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#220044","intensity":0.1},
+  {"action":"createParticles","id":"tunnel_particles","count":300,"spread":{"x":5,"y":5,"z":30},"size":0.05,"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":2,"opacity":0.7,"blending":"additive","twinkle":true},
+  {"action":"addBehavior","id":"ring0_spin","objectId":"ring0","type":"spin","params":{"speedZ":1}},
+  {"action":"addBehavior","id":"ring1_spin","objectId":"ring1","type":"spin","params":{"speedZ":-1.2}},
+  {"action":"addBehavior","id":"ring2_spin","objectId":"ring2","type":"spin","params":{"speedZ":0.9}},
+  {"action":"addBehavior","id":"ring3_spin","objectId":"ring3","type":"spin","params":{"speedZ":-0.8}},
+  {"action":"addBehavior","id":"ring4_spin","objectId":"ring4","type":"spin","params":{"speedZ":1.1}},
+  {"action":"addBehavior","id":"ring5_spin","objectId":"ring5","type":"spin","params":{"speedZ":-1.3}},
+  {"action":"addBehavior","id":"ring6_spin","objectId":"ring6","type":"spin","params":{"speedZ":0.7}},
+  {"action":"addBehavior","id":"ring7_spin","objectId":"ring7","type":"spin","params":{"speedZ":-0.9}}
+]
+\`\`\`
+
+DEMO 5: CRYSTAL CLUSTER
+Organic cluster of glowing crystals with particles
+\`\`\`json
+[
+  {"action":"setEnvironment","background":"#0a0515","bloom":{"strength":0.7,"threshold":0.5,"radius":0.4},"vignette":{"darkness":0.3}},
+  {"action":"createObject","id":"ground","type":"plane","position":{"x":0,"y":0,"z":0},"scale":{"x":20,"y":1,"z":20},"rotation":{"x":-90,"y":0,"z":0},"material":{"color":"#1a1520","metalness":0.8,"roughness":0.3}},
+  {"action":"createObject","id":"crystal1","type":"octahedron","position":{"x":0,"y":1.5,"z":0},"scale":{"x":0.8,"y":2,"z":0.8},"rotation":{"x":0,"y":45,"z":0},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createObject","id":"crystal2","type":"octahedron","position":{"x":2,"y":1,"z":1},"scale":{"x":0.6,"y":1.5,"z":0.6},"rotation":{"x":15,"y":120,"z":10},"material":{"color":"#00ffff","emissive":"#00ffff","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createObject","id":"crystal3","type":"octahedron","position":{"x":-1.5,"y":0.8,"z":1.5},"scale":{"x":0.5,"y":1.2,"z":0.5},"rotation":{"x":20,"y":200,"z":-15},"material":{"color":"#ff0080","emissive":"#ff0080","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createObject","id":"crystal4","type":"octahedron","position":{"x":1,"y":0.7,"z":-2},"scale":{"x":0.7,"y":1.8,"z":0.7},"rotation":{"x":-10,"y":80,"z":5},"material":{"color":"#00ff88","emissive":"#00ff88","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createObject","id":"crystal5","type":"octahedron","position":{"x":-2,"y":1.2,"z":-1},"scale":{"x":0.9,"y":2.2,"z":0.9},"rotation":{"x":25,"y":300,"z":-20},"material":{"color":"#ffaa00","emissive":"#ffaa00","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createObject","id":"crystal6","type":"octahedron","position":{"x":3,"y":0.6,"z":-1},"scale":{"x":0.4,"y":1,"z":0.4},"rotation":{"x":30,"y":150,"z":10},"material":{"color":"#ff00ff","emissive":"#ff00ff","emissiveIntensity":1.8,"opacity":0.6,"metalness":0.2,"roughness":0.05}},
+  {"action":"createLight","id":"hemisphere","lightType":"hemisphere","color":"#8800ff","intensity":0.4},
+  {"action":"createLight","id":"ambient","lightType":"ambient","color":"#220033","intensity":0.3},
+  {"action":"createParticles","id":"sparkles","count":150,"spread":{"x":10,"y":5,"z":10},"size":0.03,"color":"#ffffff","emissive":"#ffffff","emissiveIntensity":2,"opacity":0.9,"blending":"additive","twinkle":true},
+  {"action":"addBehavior","id":"pulse1","objectId":"crystal1","type":"pulse","params":{"min":0.9,"max":1.1,"speed":1.2}},
+  {"action":"addBehavior","id":"pulse2","objectId":"crystal2","type":"pulse","params":{"min":0.85,"max":1.15,"speed":0.9}},
+  {"action":"addBehavior","id":"pulse3","objectId":"crystal3","type":"pulse","params":{"min":0.95,"max":1.05,"speed":1.5}},
+  {"action":"addBehavior","id":"pulse4","objectId":"crystal4","type":"pulse","params":{"min":0.88,"max":1.12,"speed":1.1}},
+  {"action":"addBehavior","id":"pulse5","objectId":"crystal5","type":"pulse","params":{"min":0.92,"max":1.08,"speed":0.8}},
+  {"action":"addBehavior","id":"pulse6","objectId":"crystal6","type":"pulse","params":{"min":0.9,"max":1.1,"speed":1.3}}
+]
+\`\`\`
+
+═══ COMPOSITION PATTERNS FOR DEMOS ═══
+
+RADIAL/CIRCULAR ARRANGEMENT:
+Use trigonometry for circular layouts:
+- x = cos(angle_in_radians) * radius
+- z = sin(angle_in_radians) * radius
+- angle = (index / total_count) * 360° (or Math.PI * 2 for radians)
+Example: 8 objects in circle with radius 5
+  for i=0 to 7: angle = i * 45°, x = cos(angle)*5, z = sin(angle)*5
+
+SPIRAL PATTERNS:
+Vary radius as you increment angle:
+- radius = base_radius + (index * increment)
+- angle = index * angle_step
+Golden angle spiral: angle_step = 137.5° (creates natural-looking spirals)
+
+FIBONACCI SEQUENCES:
+Use [1,1,2,3,5,8,13,21...] for sizes or positions
+Creates organic, natural-feeling compositions
+
+GRID WITH VARIATION:
+Nested loops with mathematical variation:
+for x in -10 to 10 step 2:
+  for z in -10 to 10 step 2:
+    height = sin(x * 0.3) * cos(z * 0.3) * 2
+    Creates wave-like patterns
+
+TUNNEL/DEPTH EFFECTS:
+Objects receding into distance:
+- position.z = -index * spacing
+- scale = base_scale * (1 - index * decrement)
+- Works great with fog and chromatic aberration
+
+STAGGERED ANIMATION:
+Delay animations based on position/index:
+- delay = distance_from_center * time_per_unit
+- delay = index * fixed_interval
+Creates wave-like motion effects
+
+═══ ADVANCED TECHNIQUES ═══
+
+LAYERED COMPOSITION:
+1. Background layer (ground plane, sky, fog)
+2. Midground structures (main objects, focal points)
+3. Foreground details (small accents, particles)
+4. Atmospheric layer (particles, fog, lighting)
+5. Post-processing (bloom, vignette, chromatic aberration)
+
+COLOR HARMONIES:
+- Complementary: opposite colors (cyan #00FFFF + magenta #FF00FF)
+- Triadic: three colors 120° apart (red #FF0000, green #00FF00, blue #0000FF)
+- Analogous: adjacent colors (blue #0000FF, cyan #00FFFF, teal #008888)
+- Monochromatic: single hue with varying intensity
+
+MOTION CHOREOGRAPHY:
+- Different speeds create visual interest
+- Counter-rotation (some clockwise, some counter-clockwise)
+- Layered motion (object spins while orbiting while bobbing)
+- Phase offsets (similar motions starting at different points)
+
+VISUAL FOCAL POINTS:
+- Largest object at center of composition
+- Brightest emissive draws the eye
+- Color contrast creates emphasis
+- Animation draws attention
+- Use rule of thirds for interesting placement
+`;
 
 /** Model lists per provider — shown in the client dropdown. Synced with iOSMaigeXr. */
 const PROVIDER_CATALOG: Record<Provider, { label: string; models: string[]; defaultModel: string }> = {
@@ -382,6 +587,9 @@ export class ChatRelay {
   private activeProvider: Provider;
   private activeModel: string;
   private systemPrompt: string = DEFAULT_SYSTEM_PROMPT;
+  private temperature: number = 0.7;
+  private topP: number = 0.9;
+  private maxTokens: number = 16384; // Maxed out for full responses
   private stateManager!: SceneStateManager;
 
   constructor(queue: MessageQueue, wsServer: WSServer, config: ChatConfig) {
@@ -462,6 +670,33 @@ export class ChatRelay {
   setSystemPrompt(prompt: string): void {
     this.systemPrompt = prompt;
     console.error(`[ChatRelay] System prompt updated (${prompt.length} chars)`);
+  }
+
+  /** Update temperature at runtime (from the client UI). */
+  setTemperature(temp: number): void {
+    this.temperature = Math.max(0, Math.min(2, temp)); // Clamp 0-2
+    console.error(`[ChatRelay] Temperature set to ${this.temperature.toFixed(1)}`);
+  }
+
+  /** Update top_p at runtime (from the client UI). */
+  setTopP(topP: number): void {
+    this.topP = Math.max(0.1, Math.min(1, topP)); // Clamp 0.1-1.0
+    console.error(`[ChatRelay] Top-p set to ${this.topP.toFixed(1)}`);
+  }
+
+  /** Get current temperature. */
+  getTemperature(): number {
+    return this.temperature;
+  }
+
+  /** Get current top_p. */
+  getTopP(): number {
+    return this.topP;
+  }
+
+  /** Get max tokens (always maxed out for full responses). */
+  getMaxTokens(): number {
+    return this.maxTokens;
   }
 
   /** Return the list of providers that have an API key (or are keyless like ollama). */
@@ -649,7 +884,9 @@ export class ChatRelay {
         { role: 'system', content: this.systemPrompt },
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 16384,
+      temperature: this.temperature,
+      top_p: this.topP,
+      max_tokens: this.maxTokens,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
   }
@@ -659,7 +896,9 @@ export class ChatRelay {
     const client = new Anthropic({ apiKey: this.config.anthropicKey });
     const msg = await client.messages.create({
       model: this.activeModel,
-      max_tokens: 16384,
+      max_tokens: this.maxTokens,
+      temperature: this.temperature,
+      top_p: this.topP,
       system: this.systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
@@ -679,7 +918,9 @@ export class ChatRelay {
         { role: 'system', content: this.systemPrompt },
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 16384,
+      temperature: this.temperature,
+      top_p: this.topP,
+      max_tokens: this.maxTokens,
     });
     return resp.choices[0]?.message?.content ?? 'Sorry, I could not generate a response.';
   }
@@ -693,7 +934,11 @@ export class ChatRelay {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: this.systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: 16384 },
+        generationConfig: {
+          maxOutputTokens: this.maxTokens,
+          temperature: this.temperature,
+          topP: this.topP,
+        },
       }),
     });
     if (!resp.ok) {
@@ -717,6 +962,11 @@ export class ChatRelay {
           { role: 'user', content: userMessage },
         ],
         stream: false,
+        options: {
+          temperature: this.temperature,
+          top_p: this.topP,
+          num_predict: this.maxTokens,
+        },
       }),
     });
     if (!resp.ok) {

@@ -29,6 +29,7 @@ const overlay = new ChatOverlay(
   (message) => { wsClient.sendUserChat(message); },
   (provider, model) => { wsClient.sendSwitchProvider(provider, model); },
   (prompt) => { wsClient.sendSystemPrompt(prompt); },
+  (temperature, topP) => { wsClient.sendParameters(temperature, topP); },
 );
 
 // ── WebSocket client ──────────────────────────────────────────────────────────
