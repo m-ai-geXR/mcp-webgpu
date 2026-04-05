@@ -46,9 +46,36 @@
     #status.connecting   { background: rgba(200,150,50,.25); color: #ffd080; }
     #status.disconnected { background: rgba(200,60,60,.25);  color: #ff9090; }
 
+    #chat-controls-wrapper {
+      max-height: 200px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100,120,200,0.6) transparent;
+    }
+
+    #chat-controls-wrapper::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #chat-controls-wrapper::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #chat-controls-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(100,120,200,0.6);
+      border-radius: 3px;
+    }
+
     #chat-messages {
-      flex: 1; overflow-y: auto; padding: 10px 12px;
-      display: flex; flex-direction: column; gap: 6px;
+      flex: 1;
+      min-height: 100px;
+      max-height: 250px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
       scrollbar-width: thin;
     }
     .msg { font-size: 12.5px; line-height: 1.5; border-radius: 6px; padding: 6px 10px; }
@@ -415,11 +442,12 @@
       <select id="provider-select"></select>
       <select id="model-select"></select>
     </div>
-    <div id="system-prompt-toggle">⚙ System Prompt ▾</div>
-    <div id="system-prompt-section">
-      <textarea id="system-prompt" spellcheck="false" placeholder="System prompt…"></textarea>
-      <div class="prompt-hint">Ctrl+Enter or click away to save</div>
-    </div>
+    <div id="chat-controls-wrapper">
+      <div id="system-prompt-toggle">⚙ System Prompt ▾</div>
+      <div id="system-prompt-section">
+        <textarea id="system-prompt" spellcheck="false" placeholder="System prompt…"></textarea>
+        <div class="prompt-hint">Ctrl+Enter or click away to save</div>
+      </div>
     <div id="model-parameters-toggle" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; cursor: pointer; user-select: none; border-bottom: 1px solid rgba(100,120,200,0.15); font-size: 11px; color: rgba(100,150,255,.8); font-weight: 600;">
       🎛 Model Parameters ▾
     </div>
@@ -497,8 +525,9 @@
         <div class="scene-control-hint">Overall scene brightness</div>
       </div>
     </div>
-    <div id="chat-action-row">
-      <button id="clear-scene-btn">🗑 Clear Scene</button>
+      <div id="chat-action-row">
+        <button id="clear-scene-btn">🗑 Clear Scene</button>
+      </div>
     </div>
     <div id="chat-messages"></div>
     <div id="chat-input-row">

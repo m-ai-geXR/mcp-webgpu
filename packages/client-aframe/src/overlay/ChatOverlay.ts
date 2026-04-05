@@ -27,17 +27,11 @@ export class ChatOverlay {
   private toppSlider: HTMLInputElement;
   private toppValue: HTMLElement;
   private providers: ProviderInfo[] = [];
-  private bloomStrength: HTMLInputElement;
-  private bloomStrengthValue: HTMLElement;
-  private bloomThreshold: HTMLInputElement;
-  private bloomThresholdValue: HTMLElement;
   private backgroundColor: HTMLInputElement;
   private fogNear: HTMLInputElement;
   private fogNearValue: HTMLElement;
   private fogFar: HTMLInputElement;
   private fogFarValue: HTMLElement;
-  private exposure: HTMLInputElement;
-  private exposureValue: HTMLElement;
 
   constructor(
     onSend: (message: string) => void,
@@ -62,17 +56,11 @@ export class ChatOverlay {
     this.temperatureValue = document.getElementById('temperature-value')!;
     this.toppSlider = document.getElementById('topp-slider') as HTMLInputElement;
     this.toppValue = document.getElementById('topp-value')!;
-    this.bloomStrength = document.getElementById('bloom-strength') as HTMLInputElement;
-    this.bloomStrengthValue = document.getElementById('bloom-strength-value')!;
-    this.bloomThreshold = document.getElementById('bloom-threshold') as HTMLInputElement;
-    this.bloomThresholdValue = document.getElementById('bloom-threshold-value')!;
     this.backgroundColor = document.getElementById('background-color') as HTMLInputElement;
     this.fogNear = document.getElementById('fog-near') as HTMLInputElement;
     this.fogNearValue = document.getElementById('fog-near-value')!;
     this.fogFar = document.getElementById('fog-far') as HTMLInputElement;
     this.fogFarValue = document.getElementById('fog-far-value')!;
-    this.exposure = document.getElementById('exposure') as HTMLInputElement;
-    this.exposureValue = document.getElementById('exposure-value')!;
 
     document.getElementById('chat-header')!.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.model-selector')) return;
@@ -143,18 +131,6 @@ export class ChatOverlay {
       if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
     });
 
-    this.bloomStrength.addEventListener('input', () => {
-      const value = parseFloat(this.bloomStrength.value);
-      this.bloomStrengthValue.textContent = value.toFixed(1);
-      this.onEnvironmentChange({ bloom: { strength: value } });
-    });
-
-    this.bloomThreshold.addEventListener('input', () => {
-      const value = parseFloat(this.bloomThreshold.value);
-      this.bloomThresholdValue.textContent = value.toFixed(2);
-      this.onEnvironmentChange({ bloom: { threshold: value } });
-    });
-
     this.backgroundColor.addEventListener('input', () => {
       this.onEnvironmentChange({ background: this.backgroundColor.value });
     });
@@ -169,12 +145,6 @@ export class ChatOverlay {
       const value = parseFloat(this.fogFar.value);
       this.fogFarValue.textContent = value.toFixed(0);
       this.onEnvironmentChange({ fog: { far: value } });
-    });
-
-    this.exposure.addEventListener('input', () => {
-      const value = parseFloat(this.exposure.value);
-      this.exposureValue.textContent = value.toFixed(1);
-      this.onEnvironmentChange({ exposure: value });
     });
   }
 
