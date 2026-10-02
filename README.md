@@ -4,6 +4,8 @@
 
 > All **four** framework clients render matching, visually-aligned output from a single unified scene state. Same prompt, same scene, any engine.
 
+[![Sponsor seacloud9](https://img.shields.io/badge/Sponsor-seacloud9-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/seacloud9)
+
 ---
 
 ## Highlights
