@@ -11,7 +11,7 @@
 - **4 production-ready 3D clients** — Three.js, A-Frame (1.7.0 + bloom), Babylon.js (PBR), React Three Fiber + Zustand — all visually aligned
 - **WebXR / VR support** — enter immersive VR in all four clients; floating chat panel follows your gaze so you can talk to the AI from inside the headset
 - **9 AI providers** out of the box — OpenAI (GPT-5.2), Anthropic (Claude Sonnet 4.6), Google Gemini 3.1 Pro, Mistral, Groq (Llama 3.3 70B), xAI Grok-4, Cohere Command R+, Together.ai, and local Ollama
-- **23 MCP tools** — objects, lights, cameras, animation, environment, scene I/O, undo/redo, screenshots, and in-world chat
+- **33 MCP tools** — objects, lights, cameras, animation, behaviors, particles, environment, scene I/O (including save/load to disk and standalone HTML export), arbitrary script execution, undo/redo, screenshots, and in-world chat
 - **Persistent animations** — animations survive page reloads; the server stores active animations in scene state and replays them when clients reconnect
 - **Concurrent animations** — multiple properties (position, rotation, scale) animate simultaneously on the same object across all engines
 - **Per-framework system prompts** — each client tells the AI how to generate geometries, materials, and lighting that look correct in *that* engine (adapted from the iOS maigeXR app)
@@ -19,6 +19,7 @@
 - **Scene-aware AI** — 20-turn conversation history + live scene state injection ensures the AI makes incremental edits, not destructive rebuilds
 - **One command** — `pnpm dev` starts the server + all four clients simultaneously; auto-opens the Three.js client in your browser
 - **Hot-swappable AI provider** — change provider mid-session from the client dropdown; no restart needed
+- **Live scene controls** — bloom, exposure, fog, background colour and (Three.js) chromatic aberration as sliders in the chat overlay, applied in real time across every connected client
 
 ---
 
@@ -40,6 +41,24 @@ This starts the MCP server via stdio. Point your MCP client (VS Code Copilot, Cl
 cd mcp-webgpu
 pnpm install
 ```
+
+> **On pnpm 10 or newer this fails.** A-Frame 1.7.1 pulls `three-bmfont-text`
+> from a git repository, and recent pnpm blocks git-resolved subdependencies by
+> default:
+>
+> ```
+> ERR_PNPM_EXOTIC_SUBDEP  Exotic dependency "three-bmfont-text"
+> (resolved via git-repository) is not allowed in subdependencies
+> ```
+>
+> Install with the check relaxed instead:
+>
+> ```bash
+> pnpm install --config.block-exotic-subdeps=false
+> ```
+>
+> Or add `block-exotic-subdeps=false` to an `.npmrc` in this folder to make it
+> stick. You may also be prompted to `pnpm approve-builds` for `esbuild`.
 
 #### 2. Configure
 
@@ -131,34 +150,57 @@ Switch providers from the dropdown in the chat overlay or by changing `CHAT_PROV
 
 ---
 
-## Available MCP Tools (23)
+## Available MCP Tools (33)
 
-### Objects
+### Objects (6)
 | Tool | Description |
 |---|---|
-| `createObject` | Add a mesh — box, sphere, cylinder, cone, torus, plane, capsule, or glTF model |
+| `createObject` | Add a mesh — 17 geometry types: box, sphere, cylinder, cone, torus, torusKnot, plane, capsule, ring, circle, tube, line (laser beams / neon streaks), the four platonic solids (dodecahedron, icosahedron, octahedron, tetrahedron), or a glTF model |
 | `updateObject` | Partial update: position, rotation, scale, material (color, metalness, roughness, emissive), visibility |
 | `deleteObject` | Remove by id |
 | `cloneObject` | Duplicate with optional offset |
 | `getObject` | Inspect a single object |
 | `getSceneState` | Full scene JSON snapshot |
 
-### Lights
+### Lights (3)
 `createLight` · `updateLight` · `deleteLight` — ambient, directional, point, spot, hemisphere
 
-### Camera
+### Camera (2)
 `setCamera` · `flyToObject`
 
-### Animation
+### Animation (2)
 `animateObject` · `stopAnimation` — rotate, bounce, pulse, float, spin, custom keyframes. Animations persist in server state and replay automatically on page reload. Multiple properties animate concurrently per object.
 
-### Environment
-`setEnvironment` — background color, fog, tone mapping, exposure, shadow toggle
+### Behaviors (2)
+`addBehavior` · `removeBehavior` — attach a per-frame behavior to an object: `spin`, `bob`, `orbit`, `lookAt` or `pulse`, each with its own params. Unlike animations, behaviors tick every frame and compose with one another.
 
-### Scene
-`clearScene` · `loadScene` · `exportScene` · `undo` · `redo` · `takeScreenshot`
+### Particles (3)
+| Tool | Description |
+|---|---|
+| `createParticles` | Particle volume — up to 10,000 points with position, spread, size, color, emissive glow, opacity, drift direction and speed, size attenuation, twinkle, and additive or normal blending |
+| `updateParticles` | Change any property of a live system |
+| `deleteParticles` | Remove a system |
 
-### In-world Chat
+### Environment (1)
+`setEnvironment` — background color, fog, tone mapping, exposure, shadow toggle, bloom, vignette, chromatic aberration, HDRI maps
+
+### Scene (10)
+| Tool | Description |
+|---|---|
+| `clearScene` | Remove all user-created objects and reset default lighting |
+| `exportScene` | Export the scene as a JSON string |
+| `loadScene` | Replace the scene from an exported JSON string |
+| `saveScene` | Save the scene to a JSON file in `scenes/` |
+| `listScenes` | List saved scene files |
+| `loadSceneFromFile` | Load a saved scene by name |
+| `exportStandaloneScene` | Export a self-contained HTML file that plays in any browser with no server and no chat UI |
+| `undo` / `redo` | Walk the 20-deep snapshot stack |
+| `takeScreenshot` | Capture the current view |
+
+### Script (1)
+`executeScript` — run arbitrary JavaScript in the connected browser's scene context, with access to `scene`, `camera`, `renderer`, `controls` and a `helpers` object. The escape hatch for custom shaders, procedural generation and physics the typed tools don't cover.
+
+### In-world Chat (3)
 | Tool | Description |
 |---|---|
 | `getPendingUserMessages` | Retrieve messages typed from inside the 3D canvas |
@@ -209,8 +251,58 @@ Press **`~`** (backtick) or click **AI Chat** in the bottom-right corner. Type a
 
 - **Provider selector** — switch AI providers on the fly
 - **System prompt editor** — customise the AI's behaviour per session
+- **Model parameters** — Temperature and Top-p sliders, matching the controls in the m{ai}geXR iOS and desktop apps
+- **Scene Controls** — the collapsible post-processing and environment panel described below
 - **Clear Scene** button — reset the world instantly
 - **Debug panel** — press **Escape** to inspect scene state and connection info
+
+The controls and the message log scroll **independently**, so a long AI response can never push the sliders out of reach.
+
+---
+
+## Scene Controls
+
+The chat overlay carries a collapsible **🎨 Scene Controls** panel. Every slider
+updates on `input` — so the scene changes while you drag — and the change is sent
+to the server as an `update-environment` message, merged into canonical scene
+state, and broadcast to **all** connected clients. Open two frameworks side by
+side and they stay in sync.
+
+### Post-processing
+
+| Control | Range | Effect |
+|---|---|---|
+| **Bloom Strength** | 0–2, step 0.1 | Glow intensity around bright objects |
+| **Bloom Threshold** | 0–1, step 0.01 | Minimum brightness that blooms |
+| **Exposure** | 0–3, step 0.1 | Overall scene brightness / HDR exposure |
+| **Chromatic Aberration** | 0–0.05, step 0.001 | Colour fringing (Three.js only) |
+
+Chromatic aberration's `ShaderPass` is disabled outright at `0`, so returning
+the slider to zero costs nothing and leaves no residual effect.
+
+### Environment
+
+| Control | Range | Effect |
+|---|---|---|
+| **Background Color** | colour picker | Scene background |
+| **Fog Near** | 0–100 | Fog start distance |
+| **Fog Far** | 0–1000 | Fog end distance |
+
+### Framework support
+
+Controls are framework-specific — each client shows only what its engine can
+actually do:
+
+| Effect | Three.js | A-Frame | Babylon.js | R3F |
+|---|:---:|:---:|:---:|:---:|
+| Bloom (strength / threshold) | ✅ | ✅ | ✅ | ✅ |
+| Exposure | ✅ | ✅ | ✅ | ✅ |
+| Chromatic aberration | ✅ | — | — | — |
+| Background colour | ✅ | ✅ | ✅ | ✅ |
+| Fog (near / far) | ✅ | ✅ | ✅ | ✅ |
+
+A-Frame gets the full bloom and exposure set: v1.7.0 runs Three.js
+`EffectComposer` + `UnrealBloomPass` underneath.
 
 ---
 
@@ -225,7 +317,7 @@ Press **`~`** (backtick) or click **AI Chat** in the bottom-right corner. Type a
                               ┌──────────────────┴──────────────────┐
                               │      MCP Server (Node.js)           │
                               │                                      │
-                              │  tools/ ─ 23 tool definitions        │
+                              │  tools/ ─ 33 tool definitions        │
                               │  state/ ─ SceneStateManager + Undo   │
                               │  chat/  ─ ChatRelay (9 providers)    │
                               │  ws/    ─ WebSocket bridge :8083     │
@@ -268,7 +360,7 @@ mcp-webgpu/
 │   │   └── src/
 │   │       ├── main.ts            ← entry + .env discovery
 │   │       ├── types.ts           ← shared types
-│   │       ├── tools/             ← 23 MCP tool definitions
+│   │       ├── tools/             ← 33 MCP tool definitions
 │   │       ├── handlers/          ← tool / prompt / resource handlers
 │   │       ├── state/             ← SceneStateManager + UndoStack
 │   │       ├── chat/              ← ChatRelay (9 providers) + MessageQueue
@@ -312,6 +404,21 @@ mcp-webgpu/
 - [x] **Phase 4** — WebXR / VR headset support (all 4 clients + floating VR chat panel)
 - [x] **Phase 5** — VS Code MCP config, auto-open browser, conversation history + scene state awareness
 - [x] **Phase 6** — Animation persistence, concurrent multi-property animations, enhanced default lighting (ambient + hemisphere + directional with shadows)
+- [x] **Phase 7** — Live scene controls (bloom, exposure, fog, background) across all 4 clients, Three.js chromatic aberration, Temperature/Top-p parity with the m{ai}geXR apps, and independently scrolling chat controls
+
+See [CHANGELOG-2026-04-05.md](CHANGELOG-2026-04-05.md) for the detailed Phase 7 notes.
+
+---
+
+## Tests
+
+```bash
+cd packages/server
+npx vitest run
+```
+
+29 tests across 2 files, covering `SceneStateManager` (17) and the `UndoStack`
+(12).
 
 ---
 

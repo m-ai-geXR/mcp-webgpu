@@ -10,6 +10,7 @@ WebGL-based 3D scene client using Babylon.js engine with VR support.
 - **Advanced Rendering** - Default rendering pipeline with bloom, vignette, and post-processing
 - **Animations & Behaviors** - Smooth tweening and continuous frame-tick behaviors (spin, bob, orbit, etc.)
 - **Particle Systems** - GPU-accelerated particle effects
+- **Live Scene Controls** - Bloom strength/threshold, exposure, background colour and fog sliders in the chat overlay, applied in real time and synced to every connected client
 
 ## Quick Start
 

@@ -12,7 +12,7 @@ Control live **Three.js**, **A-Frame**, **Babylon.js**, and **React Three Fiber*
 - 💬 **In-World Chat** — Type messages from inside the 3D viewport (press `~`)
 - 🥽 **WebXR VR Support** — Full immersive mode with floating 3D chat panels
 - 🎭 **Creative AI System** — Teaches lighting, composition, color theory, and atmospheric design
-- ✅ **30 Passing Tests** — Comprehensive test coverage with 100% TypeScript type safety
+- ✅ **29 Passing Tests** — `SceneStateManager` and `UndoStack` coverage, with 100% TypeScript type safety
 
 ## Quick Start
 
