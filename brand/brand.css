@@ -1,0 +1,39 @@
+/* m{ai}geXR brand tokens.
+   Canonical source: https://maigexr.seacloud9.studio/ — see README.md.
+
+   Import this, then read the variables rather than hardcoding brand colours.
+   Light is the base; .dark re-grounds it. */
+
+:root {
+  --brand-accent: #2050e0;
+  --brand-accent-2: #4a74ea;
+  --brand-accent-300: #b9c8ff;
+  --brand-accent-400: #8aa6ff;
+  --brand-accent-500: #3f6bf0;
+  --brand-accent-600: #1740c4;
+  --brand-accent-700: #102f96;
+
+  --brand-bg: #f3f2f2;
+  --brand-surface: #eae9e9;
+  --brand-text: #201e1d;
+  --brand-muted: #605d5d;
+  --brand-divider: rgba(32, 30, 29, 0.4);
+
+  --brand-font-heading: 'Archivo', system-ui, sans-serif;
+  --brand-font-body: 'Archivo', system-ui, sans-serif;
+  --brand-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --brand-radius: 0px;
+}
+
+.dark {
+  /* Cobalt is held lighter on dark so it keeps contrast against near-black. */
+  --brand-accent: #3f6bf0;
+  --brand-accent-2: #5b7ee6;
+
+  --brand-bg: #0b0d12;
+  --brand-surface: #151821;
+  --brand-text: #f3f2f2;
+  --brand-muted: #9b9797;
+  --brand-divider: rgba(243, 242, 242, 0.18);
+}

@@ -1,0 +1,57 @@
+{
+  "$comment": "m{ai}geXR brand tokens. Canonical source: https://maigexr.seacloud9.studio/ — see README.md before editing.",
+  "name": "m{ai}geXR",
+  "wordmark": {
+    "text": "m{ai}geXR",
+    "rule": "The braces segment {ai} takes the accent colour; the rest takes the surrounding text colour.",
+    "segments": [
+      { "text": "m", "color": "text" },
+      { "text": "{ai}", "color": "accent" },
+      { "text": "geXR", "color": "text" }
+    ]
+  },
+  "color": {
+    "accent": "#2050e0",
+    "accent2": "#4a74ea",
+    "accentRamp": {
+      "100": "#eef2ff", "200": "#dbe3ff", "300": "#b9c8ff", "400": "#8aa6ff",
+      "500": "#3f6bf0", "600": "#1740c4", "700": "#102f96", "800": "#0b2170", "900": "#0a1a4d"
+    },
+    "light": {
+      "bg": "#f3f2f2",
+      "surface": "#eae9e9",
+      "text": "#201e1d",
+      "muted": "#605d5d",
+      "divider": "rgba(32, 30, 29, 0.40)"
+    },
+    "dark": {
+      "accent": "#3f6bf0",
+      "accent2": "#5b7ee6",
+      "bg": "#0b0d12",
+      "surface": "#151821",
+      "text": "#f3f2f2",
+      "muted": "#9b9797",
+      "divider": "rgba(243, 242, 242, 0.18)"
+    },
+    "neutral": {
+      "100": "#f8f4f4", "200": "#eae7e7", "300": "#d7d3d3", "400": "#bab6b6",
+      "500": "#9b9797", "600": "#7d7979", "700": "#605d5d", "800": "#444141", "900": "#2d2b2b"
+    }
+  },
+  "typography": {
+    "heading": { "family": "Archivo", "weight": 800, "letterSpacing": "-0.02em" },
+    "body": { "family": "Archivo", "weight": 400 },
+    "mono": { "family": "JetBrains Mono" },
+    "label": { "transform": "uppercase", "letterSpacing": "0.06em", "weight": 600, "size": "12px" }
+  },
+  "shape": {
+    "radius": "0px",
+    "$comment": "The system is square-cornered. Rounding is a deliberate departure, not the default."
+  },
+  "logo": {
+    "file": "maigexr-mascot.jpg",
+    "description": "Hooded figure in cream robes on a cobalt ground, with the braces {} forming its face. Halftone texture.",
+    "source": "https://avatars.githubusercontent.com/u/244361586",
+    "background": "#2050e0"
+  }
+}
